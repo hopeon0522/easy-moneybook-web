@@ -330,6 +330,15 @@ export default function App() {
                 <button className="h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200" onClick={() => setDark((value) => !value)}>
                   {dark ? '라이트모드' : '다크모드'}
                 </button>
+                <button
+                  className="h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                  onClick={async () => {
+                    await api.signOut();
+                    window.location.reload();
+                  }}
+                >
+                  로그아웃
+                </button>
               </div>
             </div>
             <nav className="flex gap-1 overflow-auto rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
@@ -956,6 +965,7 @@ function SettingsForm({
   const [manualAmount, setManualAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
+  const [legacyImporting, setLegacyImporting] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -1031,6 +1041,36 @@ function SettingsForm({
         >
           {saving ? '저장 중' : '저장'}
         </button>
+      </div>
+
+      <div className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <h3 className="text-sm font-semibold">기존 개인 데이터 가져오기</h3>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">기존 SQLite에서 내보낸 JSON 파일을 선택하면 현재 계정의 Supabase 데이터로 이전합니다.</p>
+        <label className={`mt-3 inline-flex cursor-pointer rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold dark:border-zinc-700 ${legacyImporting ? 'pointer-events-none opacity-50' : ''}`}>
+          {legacyImporting ? '이전 중...' : '데이터 파일 선택'}
+          <input
+            className="hidden"
+            type="file"
+            accept="application/json,.json"
+            disabled={legacyImporting}
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.currentTarget.value = '';
+              if (!file) return;
+              if (!window.confirm('현재 계정에 저장된 데이터를 지우고 기존 개인 데이터로 교체할까요?')) return;
+              setLegacyImporting(true);
+              try {
+                const result = await api.importLegacyData(file);
+                await onManualChanged();
+                window.alert(`${result.count.toLocaleString()}건의 거래 데이터를 이전했습니다.`);
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : '데이터 이전에 실패했습니다.');
+              } finally {
+                setLegacyImporting(false);
+              }
+            }}
+          />
+        </label>
       </div>
 
       <div className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
