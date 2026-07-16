@@ -3,7 +3,6 @@ node_modules/
 dist/
 data/
 uploads/
-private-export/
 .easy-moneybook-runtime/
 .DS_Store
 *.log

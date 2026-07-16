@@ -8,13 +8,11 @@
     "dev:client": "vite --host 127.0.0.1 --port 5173",
     "dev:server": "tsx watch server/index.ts",
     "build": "tsc -p tsconfig.json && vite build",
-    "export:legacy": "node scripts/export-sqlite-data.mjs",
     "start": "node dist-server/index.js",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "dayjs": "^1.11.13",
