@@ -186,6 +186,7 @@ export default function App() {
   const [hiddenAssetsCollapsed, setHiddenAssetsCollapsed] = useState(true);
   const [dashboardPieActiveIndex, setDashboardPieActiveIndex] = useState<number | undefined>();
   const [categoryPieActiveIndex, setCategoryPieActiveIndex] = useState<number | undefined>();
+  const [localDataImporting, setLocalDataImporting] = useState(false);
   const [collapsedAssetKinds, setCollapsedAssetKinds] = useState<Record<AssetKind, boolean>>({
     savings: false,
     investment: false,
@@ -351,6 +352,38 @@ export default function App() {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          {!dashboard.loading && !dashboard.data?.summary.latestPeriod && (
+            <section className="mb-5 flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
+              <div>
+                <h2 className="text-base font-semibold">내 로컬 가계부 데이터 불러오기</h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">데이터는 이 브라우저에만 저장되며 GitHub나 외부 서버로 전송되지 않습니다.</p>
+              </div>
+              <label className={`inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#ff5a52] px-4 text-sm font-semibold text-white ${localDataImporting ? 'pointer-events-none opacity-50' : ''}`}>
+                {localDataImporting ? '불러오는 중...' : '데이터 파일 선택'}
+                <input
+                  className="hidden"
+                  type="file"
+                  accept="application/json,.json"
+                  disabled={localDataImporting}
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.currentTarget.value = '';
+                    if (!file) return;
+                    setLocalDataImporting(true);
+                    try {
+                      const result = await api.importLegacyData(file);
+                      await refreshAll();
+                      window.alert(`${result.count.toLocaleString()}건의 거래 데이터를 불러왔습니다.`);
+                    } catch (error) {
+                      window.alert(error instanceof Error ? error.message : '데이터를 불러오지 못했습니다.');
+                    } finally {
+                      setLocalDataImporting(false);
+                    }
+                  }}
+                />
+              </label>
+            </section>
+          )}
           {tab === '대시보드' && (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -956,6 +989,7 @@ function SettingsForm({
   const [manualAmount, setManualAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
+  const [legacyImporting, setLegacyImporting] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -1031,6 +1065,41 @@ function SettingsForm({
         >
           {saving ? '저장 중' : '저장'}
         </button>
+      </div>
+
+      <div className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <h3 className="text-sm font-semibold">로컬 데이터 관리</h3>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">JSON을 가져오면 데이터는 현재 브라우저에만 저장됩니다. GitHub와 외부 서버로는 전송되지 않습니다.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+        <label className={`inline-flex cursor-pointer rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold dark:border-zinc-700 ${legacyImporting ? 'pointer-events-none opacity-50' : ''}`}>
+          {legacyImporting ? '이전 중...' : '데이터 파일 선택'}
+          <input
+            className="hidden"
+            type="file"
+            accept="application/json,.json"
+            disabled={legacyImporting}
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.currentTarget.value = '';
+              if (!file) return;
+              if (!window.confirm('현재 브라우저에 저장된 데이터를 지우고 선택한 데이터로 교체할까요?')) return;
+              setLegacyImporting(true);
+              try {
+                const result = await api.importLegacyData(file);
+                await onManualChanged();
+                window.alert(`${result.count.toLocaleString()}건의 거래 데이터를 이전했습니다.`);
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : '데이터 이전에 실패했습니다.');
+              } finally {
+                setLegacyImporting(false);
+              }
+            }}
+          />
+        </label>
+        <button className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold dark:border-zinc-700" onClick={() => void api.exportLocalData()}>
+          로컬 백업 내보내기
+        </button>
+        </div>
       </div>
 
       <div className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
