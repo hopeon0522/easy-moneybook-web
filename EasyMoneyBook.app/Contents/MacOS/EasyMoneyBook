@@ -6,7 +6,7 @@ RUNTIME_DIR="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies"
 LOG_DIR="$PROJECT_DIR/.easy-moneybook-runtime"
 URL="http://127.0.0.1:5173/"
 
-export PATH="$RUNTIME_DIR/node/bin:$RUNTIME_DIR/bin:$PATH"
+export PATH="$RUNTIME_DIR/node/bin:$RUNTIME_DIR/bin/override:$RUNTIME_DIR/bin/fallback:$RUNTIME_DIR/bin:$PATH"
 
 mkdir -p "$LOG_DIR"
 cd "$PROJECT_DIR" || exit 1
