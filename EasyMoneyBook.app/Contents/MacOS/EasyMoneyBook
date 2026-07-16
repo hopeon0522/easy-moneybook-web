@@ -1,0 +1,33 @@
+#!/bin/zsh
+
+SCRIPT_DIR="${0:A:h}"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+RUNTIME_DIR="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies"
+LOG_DIR="$PROJECT_DIR/.easy-moneybook-runtime"
+URL="http://127.0.0.1:5173/"
+
+export PATH="$RUNTIME_DIR/node/bin:$RUNTIME_DIR/bin:$PATH"
+
+mkdir -p "$LOG_DIR"
+cd "$PROJECT_DIR" || exit 1
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  osascript -e 'display dialog "pnpm을 찾을 수 없습니다. Codex 런타임이 설치된 상태에서 다시 실행해 주세요." buttons {"확인"} default button "확인"'
+  exit 1
+fi
+
+if ! curl -fsS "$URL" >/dev/null 2>&1; then
+  nohup pnpm dev > "$LOG_DIR/dev.log" 2>&1 &
+  echo $! > "$LOG_DIR/dev.pid"
+fi
+
+for _ in {1..80}; do
+  if curl -fsS "$URL" >/dev/null 2>&1; then
+    open "$URL"
+    exit 0
+  fi
+  sleep 0.5
+done
+
+open "$URL"
+osascript -e 'display dialog "EasyMoneyBook 서버가 아직 준비되지 않았습니다. 잠시 후 브라우저를 새로고침해 주세요." buttons {"확인"} default button "확인"'

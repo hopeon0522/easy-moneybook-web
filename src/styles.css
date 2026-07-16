@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: 255 255 255;
+  --ink: 15 23 42;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: #f6f6f8;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    "Segoe UI",
+    sans-serif;
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+label,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.recharts-wrapper {
+  font-family: inherit;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: #8b8b91;
+}
+
+.recharts-sector,
+.recharts-rectangle,
+.recharts-dot {
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    filter 160ms ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.recharts-sector:hover,
+.recharts-rectangle:hover,
+.recharts-dot:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 12px 20px rgb(24 24 27 / 0.22));
+  opacity: 0.96;
+}
+
+.pie-active-sector {
+  filter: drop-shadow(0 10px 16px rgb(24 24 27 / 0.18));
+  transition:
+    cx 220ms ease,
+    cy 220ms ease,
+    transform 220ms ease,
+    filter 220ms ease;
+}
+
+.recharts-tooltip-wrapper {
+  z-index: 20;
+}
+
+@media (max-width: 640px) {
+  table {
+    font-size: 13px;
+  }
+
+  th,
+  td {
+    white-space: nowrap;
+  }
+}

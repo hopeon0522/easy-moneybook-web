@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#3f3f46" flood-opacity="0.16"/>
+    </filter>
+    <linearGradient id="paper" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fffafa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#paper)"/>
+  <g filter="url(#softShadow)">
+    <path d="M327 252h420v520H327c-48 0-87-39-87-87V339c0-48 39-87 87-87Z" fill="#fffdfd"/>
+    <path d="M322 272h405v480H322c-38 0-69-31-69-69V341c0-38 31-69 69-69Z" fill="none" stroke="#ff5a52" stroke-width="44" stroke-linejoin="round"/>
+    <path d="M247 347c37 18 37 54 0 72 37 18 37 54 0 72 37 18 37 54 0 72 37 18 37 54 0 72" fill="none" stroke="#ff5a52" stroke-width="34" stroke-linecap="round"/>
+    <rect x="408" y="384" width="222" height="118" rx="16" fill="#ff5a52"/>
+    <path d="M392 589h270" stroke="#ff5a52" stroke-width="34" stroke-linecap="round"/>
+    <path d="M392 668h210" stroke="#ff5a52" stroke-width="34" stroke-linecap="round"/>
+  </g>
+</svg>
