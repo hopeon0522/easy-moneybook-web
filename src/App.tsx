@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.2';
+const appVersion = 'v0.2.3';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -88,7 +88,7 @@ function categoryLabel(props: { name?: string; cx?: number; cy?: number; midAngl
   const y = cy + radius * Math.sin((-midAngle * Math.PI) / 180);
   const label = name.length > 7 ? `${name.slice(0, 7)}…` : name;
   return (
-    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700}>
+    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700} pointerEvents="none">
       {label}
     </text>
   );
@@ -175,22 +175,27 @@ function ActivePieSector(props: {
   startAngle?: number;
   endAngle?: number;
   fill?: string;
+  name?: string;
+  percent?: number;
 }) {
-  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#ff625a' } = props;
+  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#ff625a', name = '', percent = 0 } = props;
   const offset = 10;
   const x = cx + offset * Math.cos((-midAngle * Math.PI) / 180);
   const y = cy + offset * Math.sin((-midAngle * Math.PI) / 180);
   return (
-    <Sector
-      className="pie-active-sector"
-      cx={x}
-      cy={y}
-      innerRadius={innerRadius}
-      outerRadius={outerRadius + 8}
-      startAngle={startAngle}
-      endAngle={endAngle}
-      fill={fill}
-    />
+    <g>
+      <Sector
+        className="pie-active-sector"
+        cx={x}
+        cy={y}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 8}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+      {categoryLabel({ name, cx: x, cy: y, midAngle, innerRadius, outerRadius: outerRadius + 8, percent })}
+    </g>
   );
 }
 
@@ -458,6 +463,7 @@ export default function App() {
                             dataKey="value"
                             nameKey="name"
                             outerRadius={108}
+                            isAnimationActive={false}
                             activeIndex={dashboardPieActiveIndex}
                             activeShape={ActivePieSector}
                             label={categoryLabel}
@@ -534,7 +540,7 @@ export default function App() {
                         <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
                       <Tooltip content={<NetWorthTooltip mode={netWorthMode} />} />
-                      <Line yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} strokeWidth={4.5} name="순자산" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                      <Line yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} strokeWidth={3} name="순자산" dot={{ r: 2 }} activeDot={{ r: 8 }} />
                       <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={2.5} name="부채율" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -576,8 +582,8 @@ export default function App() {
                         {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         <Tooltip content={<PensionTooltip />} />
-                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={3.75} name="원금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
-                        <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={4.5} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
                         <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
                       </LineChart>
                     </ResponsiveContainer>
@@ -673,6 +679,7 @@ export default function App() {
                           dataKey="value"
                           nameKey="name"
                           outerRadius={116}
+                          isAnimationActive={false}
                           activeIndex={categoryPieActiveIndex}
                           activeShape={ActivePieSector}
                           label={categoryLabel}
