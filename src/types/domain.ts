@@ -83,6 +83,8 @@ export interface AppSettings {
   appSubtitle: string;
   chartGridXMonths: number;
   chartGridYWon: number;
+  pensionChartGridXMonths: number;
+  pensionChartGridYWon: number;
 }
 
 export interface ManualNetWorthPoint {

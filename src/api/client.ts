@@ -28,7 +28,9 @@ const settingsDefaults: AppSettings = {
   appTitle: 'EasyMoneyBook Web',
   appSubtitle: '편한가계부 Excel 백업 분석 공간',
   chartGridXMonths: 12,
-  chartGridYWon: 100_000_000
+  chartGridYWon: 100_000_000,
+  pensionChartGridXMonths: 12,
+  pensionChartGridYWon: 10_000_000
 };
 const pensionAssetName = '삼성증권연금저축';
 
@@ -235,7 +237,9 @@ async function settings(): Promise<AppSettings> {
     appTitle: values.appTitle || settingsDefaults.appTitle,
     appSubtitle: values.appSubtitle || settingsDefaults.appSubtitle,
     chartGridXMonths: Math.max(1, Number(values.chartGridXMonths || settingsDefaults.chartGridXMonths)),
-    chartGridYWon: Math.max(100_000_000, Number(values.chartGridYWon || settingsDefaults.chartGridYWon))
+    chartGridYWon: Math.max(100_000_000, Number(values.chartGridYWon || settingsDefaults.chartGridYWon)),
+    pensionChartGridXMonths: Math.max(1, Number(values.pensionChartGridXMonths || settingsDefaults.pensionChartGridXMonths)),
+    pensionChartGridYWon: Math.max(10_000, Number(values.pensionChartGridYWon || settingsDefaults.pensionChartGridYWon))
   };
 }
 
@@ -245,7 +249,9 @@ async function updateSettings(input: AppSettings): Promise<AppSettings> {
     appTitle: input.appTitle.trim() || settingsDefaults.appTitle,
     appSubtitle: input.appSubtitle.trim() || settingsDefaults.appSubtitle,
     chartGridXMonths: Math.max(1, Math.round(Number(input.chartGridXMonths || 12))),
-    chartGridYWon: Math.max(100_000_000, Math.round(Number(input.chartGridYWon || 100_000_000) / 100_000_000) * 100_000_000)
+    chartGridYWon: Math.max(100_000_000, Math.round(Number(input.chartGridYWon || 100_000_000) / 100_000_000) * 100_000_000),
+    pensionChartGridXMonths: Math.max(1, Math.round(Number(input.pensionChartGridXMonths || 12))),
+    pensionChartGridYWon: Math.max(10_000, Math.round(Number(input.pensionChartGridYWon || 10_000_000) / 10_000) * 10_000)
   };
   const now = new Date().toISOString();
   for (const [key, value] of Object.entries(next)) {

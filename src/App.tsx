@@ -30,6 +30,8 @@ const incomeColor = '#2f8cff';
 const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
+const pensionReturnColor = '#ff8f8a';
+const appVersion = 'v0.2.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -110,7 +112,7 @@ function monthToTime(period: string) {
 }
 
 function formatChartYear(value: number | string) {
-  return dayjs(Number(value)).format('YY/12');
+  return dayjs(Number(value)).format('YY/MM');
 }
 
 function gridMonthTicks(rows: Array<{ xValue: number }>, intervalMonths: number) {
@@ -140,6 +142,16 @@ function moneyGridTicks(rows: Array<{ netWorth: number }>, intervalWon: number) 
     start -= unit;
     end += unit;
   }
+  const count = Math.round((end - start) / unit) + 1;
+  return Array.from({ length: count }, (_, index) => start + index * unit);
+}
+
+function amountGridTicks(values: number[], intervalWon: number) {
+  if (!values.length) return [];
+  const unit = Math.max(10_000, Math.round((intervalWon || 10_000_000) / 10_000) * 10_000);
+  let start = Math.floor(Math.min(...values) / unit) * unit;
+  let end = Math.ceil(Math.max(...values) / unit) * unit;
+  if (start === end) end += unit;
   const count = Math.round((end - start) / unit) + 1;
   return Array.from({ length: count }, (_, index) => start + index * unit);
 }
@@ -296,10 +308,21 @@ export default function App() {
   const netWorthXTicks = useMemo(() => gridMonthTicks(netWorthRows, chartGridXMonths), [chartGridXMonths, netWorthRows]);
   const netWorthYTicks = useMemo(() => moneyGridTicks(netWorthRows, chartGridYWon), [chartGridYWon, netWorthRows]);
   const pensionRows = useMemo(
-    () => (dashboard.data?.pensionLine ?? []).map((row) => ({ ...row, xValue: monthToTime(row.month) })),
+    () =>
+      (dashboard.data?.pensionLine ?? []).map((row) => ({
+        ...row,
+        xValue: monthToTime(row.month),
+        returnRate: row.principal ? (row.profit / row.principal) * 100 : 0
+      })),
     [dashboard.data?.pensionLine]
   );
-  const pensionXTicks = useMemo(() => gridMonthTicks(pensionRows, 12), [pensionRows]);
+  const pensionChartGridXMonths = settings.data?.pensionChartGridXMonths ?? 12;
+  const pensionChartGridYWon = settings.data?.pensionChartGridYWon ?? 10_000_000;
+  const pensionXTicks = useMemo(() => gridMonthTicks(pensionRows, pensionChartGridXMonths), [pensionChartGridXMonths, pensionRows]);
+  const pensionYTicks = useMemo(
+    () => amountGridTicks(pensionRows.flatMap((row) => [row.principal, row.total]), pensionChartGridYWon),
+    [pensionChartGridYWon, pensionRows]
+  );
 
   const calendarCells = useMemo(() => {
     if (!effectivePeriod) return [];
@@ -330,7 +353,10 @@ export default function App() {
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h1 className="text-xl font-semibold tracking-normal">{settings.data?.appTitle ?? 'EasyMoneyBook Web'}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-semibold tracking-normal">{settings.data?.appTitle ?? 'EasyMoneyBook Web'}</h1>
+                  <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300">{appVersion}</span>
+                </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{settings.data?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간'}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -520,7 +546,7 @@ export default function App() {
                   <div className="h-72">
                     <ResponsiveContainer>
                       <LineChart data={pensionRows}>
-                        <CartesianGrid vertical={false} stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <CartesianGrid stroke="transparent" />
                         <XAxis
                           dataKey="xValue"
                           type="number"
@@ -532,10 +558,14 @@ export default function App() {
                           tickLine={false}
                           tick={{ fontSize: 11, fill: '#9f9fa5' }}
                         />
-                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={62} />
+                        <YAxis yAxisId="amount" axisLine={false} tickLine={false} ticks={pensionYTicks} domain={[pensionYTicks[0] ?? 'auto', pensionYTicks[pensionYTicks.length - 1] ?? 'auto']} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={62} />
+                        <YAxis yAxisId="returnRate" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: pensionReturnColor }} width={48} />
+                        {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
+                        {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         <Tooltip content={<PensionTooltip />} />
-                        <Line type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={false} activeDot={{ r: 6 }} />
-                        <Line type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={false} activeDot={{ r: 6 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                        <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={false} activeDot={{ r: 6 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1171,6 +1201,8 @@ function SettingsForm({
   const [appSubtitle, setAppSubtitle] = useState(settings?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간');
   const [chartGridXMonths, setChartGridXMonths] = useState(String(settings?.chartGridXMonths ?? 12));
   const [chartGridYHundredMillion, setChartGridYHundredMillion] = useState(String(Math.round((settings?.chartGridYWon ?? 100_000_000) / 100_000_000)));
+  const [pensionChartGridXMonths, setPensionChartGridXMonths] = useState(String(settings?.pensionChartGridXMonths ?? 12));
+  const [pensionChartGridYTenThousand, setPensionChartGridYTenThousand] = useState(String(Math.round((settings?.pensionChartGridYWon ?? 10_000_000) / 10_000)));
   const [manualYear, setManualYear] = useState('');
   const [manualMonth, setManualMonth] = useState('');
   const [manualAmount, setManualAmount] = useState('');
@@ -1183,6 +1215,8 @@ function SettingsForm({
       setAppSubtitle(settings.appSubtitle);
       setChartGridXMonths(String(settings.chartGridXMonths ?? 12));
       setChartGridYHundredMillion(String(Math.round((settings.chartGridYWon ?? 100_000_000) / 100_000_000)));
+      setPensionChartGridXMonths(String(settings.pensionChartGridXMonths ?? 12));
+      setPensionChartGridYTenThousand(String(Math.round((settings.pensionChartGridYWon ?? 10_000_000) / 10_000)));
     }
   }, [settings]);
 
@@ -1205,9 +1239,11 @@ function SettingsForm({
             onChange={(event) => setAppSubtitle(event.target.value)}
           />
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <h3 className="mb-2 text-sm font-semibold">월별 순자산 차트</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium">
-            차트 X축 점선 간격
+            X축 점선 간격
             <div className="mt-1 flex items-center gap-2">
               <input
                 className="w-full rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950"
@@ -1219,7 +1255,7 @@ function SettingsForm({
             </div>
           </label>
           <label className="block text-sm font-medium">
-            차트 Y축 점선 간격
+            Y축 점선 간격
             <div className="mt-1 flex items-center gap-2">
               <input
                 className="w-full rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950"
@@ -1230,6 +1266,36 @@ function SettingsForm({
               <span className="shrink-0 text-sm text-zinc-500">억원</span>
             </div>
           </label>
+          </div>
+        </div>
+        <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <h3 className="mb-2 text-sm font-semibold">연금저축 차트</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium">
+              X축 점선 간격
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  className="w-full rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950"
+                  inputMode="numeric"
+                  value={pensionChartGridXMonths}
+                  onChange={(event) => setPensionChartGridXMonths(event.target.value.replace(/\D/g, ''))}
+                />
+                <span className="shrink-0 text-sm text-zinc-500">개월</span>
+              </div>
+            </label>
+            <label className="block text-sm font-medium">
+              Y축 점선 간격
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  className="w-full rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950"
+                  inputMode="numeric"
+                  value={pensionChartGridYTenThousand}
+                  onChange={(event) => setPensionChartGridYTenThousand(event.target.value.replace(/\D/g, ''))}
+                />
+                <span className="shrink-0 text-sm text-zinc-500">만원</span>
+              </div>
+            </label>
+          </div>
         </div>
         <button
           className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -1241,7 +1307,9 @@ function SettingsForm({
                 appTitle,
                 appSubtitle,
                 chartGridXMonths: Number(chartGridXMonths || 12),
-                chartGridYWon: Number(chartGridYHundredMillion || 1) * 100_000_000
+                chartGridYWon: Number(chartGridYHundredMillion || 1) * 100_000_000,
+                pensionChartGridXMonths: Number(pensionChartGridXMonths || 12),
+                pensionChartGridYWon: Number(pensionChartGridYTenThousand || 1000) * 10_000
               });
               await onSaved();
             } finally {
