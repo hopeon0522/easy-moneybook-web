@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.1';
+const appVersion = 'v0.2.2';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -154,6 +154,16 @@ function amountGridTicks(values: number[], intervalWon: number) {
   if (start === end) end += unit;
   const count = Math.round((end - start) / unit) + 1;
   return Array.from({ length: count }, (_, index) => start + index * unit);
+}
+
+function triangleChartDot(props: { cx?: number; cy?: number; stroke?: string }) {
+  const { cx = 0, cy = 0, stroke = pensionReturnColor } = props;
+  return <path d={`M ${cx} ${cy - 4} L ${cx + 4} ${cy + 3} L ${cx - 4} ${cy + 3} Z`} fill={stroke} stroke="#fff" strokeWidth={0.75} />;
+}
+
+function activeTriangleChartDot(props: { cx?: number; cy?: number; stroke?: string }) {
+  const { cx = 0, cy = 0, stroke = pensionReturnColor } = props;
+  return <path d={`M ${cx} ${cy - 8} L ${cx + 8} ${cy + 6} L ${cx - 8} ${cy + 6} Z`} fill={stroke} stroke="#fff" strokeWidth={1.25} />;
 }
 
 function ActivePieSector(props: {
@@ -524,8 +534,8 @@ export default function App() {
                         <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
                       <Tooltip content={<NetWorthTooltip mode={netWorthMode} />} />
-                      <Line yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} strokeWidth={3} name="순자산" dot={{ r: 2 }} activeDot={{ r: 8 }} />
-                      <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={2.5} name="부채율" dot={{ r: 2 }} activeDot={{ r: 6 }} />
+                      <Line yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} strokeWidth={4.5} name="순자산" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                      <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={2.5} name="부채율" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -566,9 +576,9 @@ export default function App() {
                         {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         <Tooltip content={<PensionTooltip />} />
-                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
-                        <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
-                        <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={{ r: 2 }} activeDot={{ r: 6 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={3.75} name="원금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={4.5} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                        <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
