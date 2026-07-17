@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import {
   AppSettings,
   AssetKind,
@@ -54,7 +55,19 @@ function pensionMonthlyRows(transactions: Transaction[], data: LocalData): Pensi
     automatic.set(period, current);
   }
   const overrides = new Map((data.pension_overrides ?? []).map((row) => [row.period, row]));
-  const periods = [...new Set([...automatic.keys(), ...overrides.keys()])].sort();
+  const pensionPeriods = [...new Set([...automatic.keys(), ...overrides.keys()])].sort();
+  const latestTransactionPeriod = transactions.map((row) => row.date.slice(0, 7)).filter(Boolean).sort().at(-1);
+  const firstPeriod = pensionPeriods[0];
+  const lastPeriod = [pensionPeriods.at(-1), latestTransactionPeriod].filter(Boolean).sort().at(-1);
+  const periods: string[] = [];
+  if (firstPeriod && lastPeriod) {
+    let cursor = dayjs(`${firstPeriod}-01`);
+    const end = dayjs(`${lastPeriod}-01`);
+    while (!cursor.isAfter(end)) {
+      periods.push(cursor.format('YYYY-MM'));
+      cursor = cursor.add(1, 'month');
+    }
+  }
   return periods.map((period) => {
     const auto = automatic.get(period) ?? { principal: 0, profit: 0 };
     const manual = overrides.get(period);

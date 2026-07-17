@@ -929,7 +929,7 @@ function PensionTooltip({
       <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{typeof label === 'number' ? dayjs(label).format('YYYY-MM') : label}</div>
       <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">원금</span><strong className="text-[#2f8cff]">{formatMoney(Number(row?.principal ?? 0))}</strong></div>
       <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익</span><strong className={profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}>{formatMoney(profit)}</strong></div>
-      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익률</span><strong className={profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}>{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익률</span><strong className="text-[#ff5a52] dark:text-[#ff817b]">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
       <div className="mt-1 flex items-center justify-between gap-5 border-t border-zinc-100 pt-1 dark:border-zinc-800"><span className="text-zinc-500">총액</span><strong>{formatMoney(Number(row?.total ?? 0))}</strong></div>
     </div>
   );
@@ -961,7 +961,7 @@ function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | 
             <div><span className="block text-zinc-500">누적 원금</span><strong className="mt-1 block text-sm text-[#2f8cff]">{formatMoney(totals.principal)}</strong></div>
             <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(totals.profit)}</strong></div>
             <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
-            <div><span className="block text-zinc-500">수익률</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-[#ff5a52] dark:text-[#ff817b]">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
           </div>
         </div>
 
