@@ -293,6 +293,11 @@ export default function App() {
   const chartGridYWon = settings.data?.chartGridYWon ?? 100_000_000;
   const netWorthXTicks = useMemo(() => gridMonthTicks(netWorthRows, chartGridXMonths), [chartGridXMonths, netWorthRows]);
   const netWorthYTicks = useMemo(() => moneyGridTicks(netWorthRows, chartGridYWon), [chartGridYWon, netWorthRows]);
+  const pensionRows = useMemo(
+    () => (dashboard.data?.pensionLine ?? []).map((row) => ({ ...row, xValue: monthToTime(row.month) })),
+    [dashboard.data?.pensionLine]
+  );
+  const pensionXTicks = useMemo(() => gridMonthTicks(pensionRows, 12), [pensionRows]);
 
   const calendarCells = useMemo(() => {
     if (!effectivePeriod) return [];
@@ -493,6 +498,48 @@ export default function App() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+              </section>
+
+              <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold">삼성증권 연금저축 변화</h2>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">이체는 원금, 수입·기타 거래는 수익으로 누적 계산</p>
+                  </div>
+                  {pensionRows.length > 0 && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                      <span className="text-zinc-500">원금 <strong className="ml-1 text-[#2f8cff]">{formatMoney(pensionRows[pensionRows.length - 1].principal)}</strong></span>
+                      <span className="text-zinc-500">수익 <strong className={`ml-1 ${pensionRows[pensionRows.length - 1].profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(pensionRows[pensionRows.length - 1].profit)}</strong></span>
+                      <span className="text-zinc-500">총액 <strong className="ml-1 text-zinc-950 dark:text-white">{formatMoney(pensionRows[pensionRows.length - 1].total)}</strong></span>
+                    </div>
+                  )}
+                </div>
+                {pensionRows.length > 0 ? (
+                  <div className="h-72">
+                    <ResponsiveContainer>
+                      <LineChart data={pensionRows}>
+                        <CartesianGrid vertical={false} stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <XAxis
+                          dataKey="xValue"
+                          type="number"
+                          scale="time"
+                          domain={['dataMin', 'dataMax']}
+                          ticks={pensionXTicks}
+                          tickFormatter={formatChartYear}
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 11, fill: '#9f9fa5' }}
+                        />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={62} />
+                        <Tooltip content={<PensionTooltip />} />
+                        <Line type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={false} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="grid h-40 place-items-center text-sm text-zinc-500">삼성증권연금저축 거래가 없습니다.</div>
+                )}
               </section>
 
               <section>
@@ -857,6 +904,28 @@ function NetWorthTooltip({
   );
 }
 
+function PensionTooltip({
+  active,
+  payload,
+  label
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: { principal?: number; profit?: number; total?: number } }>;
+  label?: string | number;
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  const profit = Number(row?.profit ?? 0);
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-950">
+      <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{typeof label === 'number' ? dayjs(label).format('YYYY-MM') : label}</div>
+      <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">원금</span><strong className="text-[#2f8cff]">{formatMoney(Number(row?.principal ?? 0))}</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익</span><strong className={profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}>{formatMoney(profit)}</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5 border-t border-zinc-100 pt-1 dark:border-zinc-800"><span className="text-zinc-500">총액</span><strong>{formatMoney(Number(row?.total ?? 0))}</strong></div>
+    </div>
+  );
+}
+
 function AssetManager({
   title,
   collapsed,
@@ -989,7 +1058,6 @@ function SettingsForm({
   const [manualAmount, setManualAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
-  const [legacyImporting, setLegacyImporting] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -1067,43 +1135,12 @@ function SettingsForm({
         </button>
       </div>
 
-      <div className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
-        <h3 className="text-sm font-semibold">로컬 데이터 관리</h3>
-        <p className="mt-1 text-xs leading-5 text-zinc-500">JSON을 가져오면 데이터는 현재 브라우저에만 저장됩니다. GitHub와 외부 서버로는 전송되지 않습니다.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-        <label className={`inline-flex cursor-pointer rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold dark:border-zinc-700 ${legacyImporting ? 'pointer-events-none opacity-50' : ''}`}>
-          {legacyImporting ? '이전 중...' : '데이터 파일 선택'}
-          <input
-            className="hidden"
-            type="file"
-            accept="application/json,.json"
-            disabled={legacyImporting}
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              event.currentTarget.value = '';
-              if (!file) return;
-              if (!window.confirm('현재 브라우저에 저장된 데이터를 지우고 선택한 데이터로 교체할까요?')) return;
-              setLegacyImporting(true);
-              try {
-                const result = await api.importLegacyData(file);
-                await onManualChanged();
-                window.alert(`${result.count.toLocaleString()}건의 거래 데이터를 이전했습니다.`);
-              } catch (error) {
-                window.alert(error instanceof Error ? error.message : '데이터 이전에 실패했습니다.');
-              } finally {
-                setLegacyImporting(false);
-              }
-            }}
-          />
-        </label>
-        <button className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold dark:border-zinc-700" onClick={() => void api.exportLocalData()}>
-          로컬 백업 내보내기
-        </button>
-        </div>
-      </div>
-
-      <div className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
-        <h3 className="text-sm font-semibold">과거 순자산 수동 입력</h3>
+      <details className="group border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold [&::-webkit-details-marker]:hidden">
+          과거 순자산 수동 입력
+          <span className="text-lg text-zinc-400 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+        </summary>
+        <div className="pt-1">
         <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_2fr_auto]">
           <input
             className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950"
@@ -1187,7 +1224,8 @@ function SettingsForm({
             </tbody>
           </table>
         </div>
-      </div>
+        </div>
+      </details>
     </div>
   );
 }

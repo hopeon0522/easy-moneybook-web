@@ -35,6 +35,7 @@ export interface DashboardData {
   assetLineYearly: Array<{ year: string; month?: string; netWorth: number; isManual?: number }>;
   debtRatioLine: Array<{ month: string; debtRatio: number }>;
   debtRatioLineYearly: Array<{ year: string; month?: string; debtRatio: number }>;
+  pensionLine: Array<{ month: string; principal: number; profit: number; total: number }>;
 }
 
 export interface Metadata {

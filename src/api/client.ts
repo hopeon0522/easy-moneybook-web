@@ -134,6 +134,20 @@ async function dashboard(): Promise<DashboardData> {
     return { month, debtRatio: monthAssets ? (monthLiabilities * 100) / monthAssets : 0 };
   });
 
+  const pensionAsset = assets.find((asset) => asset.name === '삼성증권연금저축');
+  const pensionTransactions = transactions.filter((row) => row.asset === '삼성증권연금저축');
+  const firstPensionMonth = pensionTransactions.map((row) => row.date.slice(0, 7)).sort()[0];
+  let pensionPrincipal = pensionAsset?.initial_value ?? 0;
+  let pensionProfit = 0;
+  const pensionLine = months
+    .filter((month) => firstPensionMonth && month >= firstPensionMonth)
+    .map((month) => {
+      const monthRows = pensionTransactions.filter((row) => row.date.slice(0, 7) === month);
+      pensionPrincipal += monthRows.filter((row) => row.type === 'transfer').reduce((sum, row) => sum + row.amount, 0);
+      pensionProfit += monthRows.filter((row) => row.type !== 'transfer').reduce((sum, row) => sum + row.amount, 0);
+      return { month, principal: pensionPrincipal, profit: pensionProfit, total: pensionPrincipal + pensionProfit };
+    });
+
   const categoryTotals = new Map<string, number>();
   for (const row of latestRows.filter((item) => item.type === 'expense')) categoryTotals.set(row.category, (categoryTotals.get(row.category) ?? 0) - row.amount);
   const categoryPie = [...categoryTotals.entries()]
@@ -158,7 +172,8 @@ async function dashboard(): Promise<DashboardData> {
     assetLine,
     assetLineYearly: yearlyRows(assetLine),
     debtRatioLine,
-    debtRatioLineYearly: yearlyRows(debtRatioLine)
+    debtRatioLineYearly: yearlyRows(debtRatioLine),
+    pensionLine
   };
 }
 
