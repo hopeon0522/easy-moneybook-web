@@ -6,6 +6,7 @@ import {
   ImportFile,
   ManualNetWorthPoint,
   Metadata,
+  PensionSavingsData,
   Transaction
 } from '../types/domain';
 import { parseEasyMoneyBookFile } from '../lib/excelParser';
@@ -28,6 +29,7 @@ const settingsDefaults: AppSettings = {
   chartGridXMonths: 12,
   chartGridYWon: 100_000_000
 };
+const pensionAssetName = '삼성증권연금저축';
 
 let dataCache: LocalData | null = null;
 
@@ -37,8 +39,43 @@ async function localData(): Promise<LocalData> {
 }
 
 async function persist(data: LocalData): Promise<void> {
-  dataCache = data;
-  await saveLocalData(data);
+  const normalized = { ...data, pension_overrides: data.pension_overrides ?? [] };
+  dataCache = normalized;
+  await saveLocalData(normalized);
+}
+
+function pensionMonthlyRows(transactions: Transaction[], data: LocalData): PensionSavingsData['rows'] {
+  const automatic = new Map<string, { principal: number; profit: number }>();
+  for (const row of transactions.filter((item) => item.asset === pensionAssetName)) {
+    const period = row.date.slice(0, 7);
+    const current = automatic.get(period) ?? { principal: 0, profit: 0 };
+    if (row.type === 'transfer') current.principal += row.amount;
+    else current.profit += row.amount;
+    automatic.set(period, current);
+  }
+  const overrides = new Map((data.pension_overrides ?? []).map((row) => [row.period, row]));
+  const periods = [...new Set([...automatic.keys(), ...overrides.keys()])].sort();
+  return periods.map((period) => {
+    const auto = automatic.get(period) ?? { principal: 0, profit: 0 };
+    const manual = overrides.get(period);
+    return {
+      period,
+      principal: manual?.principal ?? auto.principal,
+      profit: manual?.profit ?? auto.profit,
+      autoPrincipal: auto.principal,
+      autoProfit: auto.profit,
+      isManual: Boolean(manual)
+    };
+  });
+}
+
+async function pensionSavings(): Promise<PensionSavingsData> {
+  const [transactions, assets, data] = await Promise.all([allTransactions(), assetRows(), localData()]);
+  return {
+    assetName: pensionAssetName,
+    initialValue: assets.find((asset) => asset.name === pensionAssetName)?.initial_value ?? 0,
+    rows: pensionMonthlyRows(transactions, data).reverse()
+  };
 }
 
 function mapTransaction(row: LocalData['transactions'][number]): Transaction {
@@ -97,7 +134,7 @@ async function manualNetWorth(): Promise<ManualNetWorthPoint[]> {
 }
 
 async function dashboard(): Promise<DashboardData> {
-  const [transactions, assets, manual] = await Promise.all([allTransactions(), assetRows(), manualNetWorth()]);
+  const [transactions, assets, manual, data] = await Promise.all([allTransactions(), assetRows(), manualNetWorth(), localData()]);
   const months = [...new Set(transactions.map((row) => row.date.slice(0, 7)).filter(Boolean))].sort();
   const latestPeriod = months.at(-1) ?? '';
   const latestRows = transactions.filter((row) => row.date.slice(0, 7) === latestPeriod);
@@ -134,17 +171,19 @@ async function dashboard(): Promise<DashboardData> {
     return { month, debtRatio: monthAssets ? (monthLiabilities * 100) / monthAssets : 0 };
   });
 
-  const pensionAsset = assets.find((asset) => asset.name === '삼성증권연금저축');
-  const pensionTransactions = transactions.filter((row) => row.asset === '삼성증권연금저축');
-  const firstPensionMonth = pensionTransactions.map((row) => row.date.slice(0, 7)).sort()[0];
+  const pensionAsset = assets.find((asset) => asset.name === pensionAssetName);
+  const pensionMonths = pensionMonthlyRows(transactions, data);
+  const pensionByMonth = new Map(pensionMonths.map((row) => [row.period, row]));
+  const firstPensionMonth = pensionMonths[0]?.period;
   let pensionPrincipal = pensionAsset?.initial_value ?? 0;
   let pensionProfit = 0;
-  const pensionLine = months
+  const pensionChartMonths = [...new Set([...months, ...pensionMonths.map((row) => row.period)])].sort();
+  const pensionLine = pensionChartMonths
     .filter((month) => firstPensionMonth && month >= firstPensionMonth)
     .map((month) => {
-      const monthRows = pensionTransactions.filter((row) => row.date.slice(0, 7) === month);
-      pensionPrincipal += monthRows.filter((row) => row.type === 'transfer').reduce((sum, row) => sum + row.amount, 0);
-      pensionProfit += monthRows.filter((row) => row.type !== 'transfer').reduce((sum, row) => sum + row.amount, 0);
+      const monthRow = pensionByMonth.get(month);
+      pensionPrincipal += monthRow?.principal ?? 0;
+      pensionProfit += monthRow?.profit ?? 0;
       return { month, principal: pensionPrincipal, profit: pensionProfit, total: pensionPrincipal + pensionProfit };
     });
 
@@ -293,12 +332,31 @@ function legacyToLocal(payload: LegacyPayload): LocalData {
     tags: payload.tags.map((row, index) => ({ id: Number(row.id ?? index + 1), name: String(row.name ?? ''), created_at: String(row.createdAt ?? now), updated_at: String(row.updatedAt ?? now) })),
     settings: payload.settings.map((row) => ({ key: String(row.key ?? ''), value: String(row.value ?? ''), updated_at: String(row.updatedAt ?? now) })),
     manual_net_worth: payload.manualNetWorth.map((row, index) => ({ id: Number(row.id ?? index + 1), period: String(row.period ?? ''), amount: Number(row.amount ?? 0), created_at: String(row.createdAt ?? now), updated_at: String(row.updatedAt ?? now) })),
+    pension_overrides: [],
     import_files: payload.importFiles.map((row, index) => ({ id: Number(row.id ?? index + 1), source_file: String(row.sourceFile ?? ''), transaction_count: Number(row.transactionCount ?? 0), first_date: String(row.firstDate ?? ''), last_date: String(row.lastDate ?? ''), uploaded_at: String(row.uploadedAt ?? now), updated_at: String(row.updatedAt ?? now) }))
   };
 }
 
 export const api = {
   dashboard,
+  pensionSavings,
+  updatePensionMonth: async (input: { period: string; principal: number; profit: number }) => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
+    if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('원금과 수익을 숫자로 입력해 주세요.');
+    const data = await localData();
+    const now = new Date().toISOString();
+    const row = (data.pension_overrides ?? []).find((item) => item.period === input.period);
+    if (row) Object.assign(row, { principal: input.principal, profit: input.profit, updated_at: now });
+    else data.pension_overrides.push({ period: input.period, principal: input.principal, profit: input.profit, updated_at: now });
+    await persist(data);
+    return { ok: true as const };
+  },
+  deletePensionMonth: async (period: string) => {
+    const data = await localData();
+    data.pension_overrides = (data.pension_overrides ?? []).filter((row) => row.period !== period);
+    await persist(data);
+    return { ok: true as const };
+  },
   settings,
   updateSettings,
   manualNetWorth,

@@ -92,3 +92,16 @@ export interface ManualNetWorthPoint {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PensionSavingsData {
+  assetName: string;
+  initialValue: number;
+  rows: Array<{
+    period: string;
+    principal: number;
+    profit: number;
+    autoPrincipal: number;
+    autoProfit: number;
+    isManual: boolean;
+  }>;
+}

@@ -21,10 +21,10 @@ import { StatCard } from './components/StatCard';
 import { TransactionTable } from './components/TransactionTable';
 import { UploadDropzone } from './components/UploadDropzone';
 import { useAsync } from './hooks/useAsync';
-import { AppSettings, AssetKind, ManualNetWorthPoint } from './types/domain';
+import { AppSettings, AssetKind, ManualNetWorthPoint, PensionSavingsData } from './types/domain';
 import { formatMoney } from './utils/format';
 
-const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '백업', '설정'] as const;
+const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '설정'] as const;
 const pieColors = ['#ff625a', '#ff944d', '#ffd23f', '#bde93f', '#64cf6b', '#5fded0', '#58a7f7', '#8b8cf6', '#c17bff', '#ff78a8'];
 const incomeColor = '#2f8cff';
 const expenseColor = '#ff5a52';
@@ -202,6 +202,7 @@ export default function App() {
   const periods = useAsync(api.periods, []);
   const imports = useAsync(api.imports, []);
   const manualNetWorth = useAsync(api.manualNetWorth, []);
+  const pensionSavings = useAsync(api.pensionSavings, []);
   const effectivePeriod = selectedPeriod || dashboard.data?.summary.latestPeriod || periods.data?.[0] || '';
   const categoryExpense = useAsync(() => api.categoryExpense(effectivePeriod, categoryMode), [categoryMode, effectivePeriod]);
 
@@ -241,6 +242,7 @@ export default function App() {
       periods.reload(),
       imports.reload(),
       manualNetWorth.reload(),
+      pensionSavings.reload(),
       categoryExpense.reload(),
       transactions.reload(),
       calendarTransactions.reload(),
@@ -745,6 +747,10 @@ export default function App() {
             </section>
           )}
 
+          {tab === '연금저축' && (
+            <PensionSavingsManager data={pensionSavings.data} onSaved={refreshAll} />
+          )}
+
           {tab === '백업' && (
             <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="mb-4 flex items-center justify-between gap-3">
@@ -916,13 +922,125 @@ function PensionTooltip({
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload;
   const profit = Number(row?.profit ?? 0);
+  const principal = Number(row?.principal ?? 0);
+  const returnRate = principal ? (profit / principal) * 100 : null;
   return (
     <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-950">
       <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{typeof label === 'number' ? dayjs(label).format('YYYY-MM') : label}</div>
       <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">원금</span><strong className="text-[#2f8cff]">{formatMoney(Number(row?.principal ?? 0))}</strong></div>
       <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익</span><strong className={profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}>{formatMoney(profit)}</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익률</span><strong className={profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}>{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
       <div className="mt-1 flex items-center justify-between gap-5 border-t border-zinc-100 pt-1 dark:border-zinc-800"><span className="text-zinc-500">총액</span><strong>{formatMoney(Number(row?.total ?? 0))}</strong></div>
     </div>
+  );
+}
+
+function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | null; onSaved: () => Promise<void> }) {
+  const [period, setPeriod] = useState('');
+  const [principal, setPrincipal] = useState('');
+  const [profit, setProfit] = useState('');
+  const [saving, setSaving] = useState(false);
+  const totals = [...(data?.rows ?? [])]
+    .reverse()
+    .reduce(
+      (result, row) => ({ principal: result.principal + row.principal, profit: result.profit + row.profit }),
+      { principal: data?.initialValue ?? 0, profit: 0 }
+    );
+  const total = totals.principal + totals.profit;
+  const returnRate = totals.principal ? (totals.profit / totals.principal) * 100 : null;
+
+  return (
+    <div className="space-y-4">
+      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">연금저축 월별 관리</h2>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">{data?.assetName ?? '삼성증권연금저축'} 거래에서 이체는 원금, 수입·기타 거래는 수익으로 자동 반영됩니다.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:grid-cols-4">
+            <div><span className="block text-zinc-500">누적 원금</span><strong className="mt-1 block text-sm text-[#2f8cff]">{formatMoney(totals.principal)}</strong></div>
+            <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(totals.profit)}</strong></div>
+            <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-[160px_1fr_1fr_auto] dark:border-zinc-800">
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} aria-label="연금저축 년월" />
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월 원금 유입액" value={principal} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} />
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월 수익(수입)" value={profit} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
+          <button
+            className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            disabled={saving || !period}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await api.updatePensionMonth({ period, principal: Number(principal || 0), profit: Number(profit || 0) });
+                setPeriod('');
+                setPrincipal('');
+                setProfit('');
+                await onSaved();
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : '연금저축 데이터를 저장하지 못했습니다.');
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            추가/저장
+          </button>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-auto">
+          <table className="min-w-[820px] w-full text-sm">
+            <thead className="bg-zinc-50 text-left text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+              <tr><th className="px-3 py-3">년/월</th><th className="px-3 py-3 text-right">월 원금</th><th className="px-3 py-3 text-right">월 수익(수입)</th><th className="px-3 py-3">계산 기준</th><th className="px-3 py-3 text-right">관리</th></tr>
+            </thead>
+            <tbody>
+              {(data?.rows ?? []).length ? (
+                (data?.rows ?? []).map((row) => <PensionMonthRow key={row.period} row={row} onSaved={onSaved} />)
+              ) : (
+                <tr><td className="px-3 py-5 text-zinc-500" colSpan={5}>연금저축 월별 데이터가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PensionMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][number]; onSaved: () => Promise<void> }) {
+  const [principal, setPrincipal] = useState(String(row.principal));
+  const [profit, setProfit] = useState(String(row.profit));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPrincipal(String(row.principal));
+    setProfit(String(row.profit));
+  }, [row.principal, row.profit]);
+
+  return (
+    <tr className="border-t border-zinc-100 dark:border-zinc-800">
+      <td className="px-3 py-3 font-semibold">{row.period}</td>
+      <td className="px-3 py-3 text-right">
+        <input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" value={principal} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} />
+        {row.isManual && <div className="mt-1 text-[11px] text-zinc-400">자동 {formatMoney(row.autoPrincipal)}</div>}
+      </td>
+      <td className="px-3 py-3 text-right">
+        <input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-[#ff5a52]' : ''}`} inputMode="numeric" value={profit} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
+        {row.isManual && <div className="mt-1 text-[11px] text-zinc-400">자동 {formatMoney(row.autoProfit)}</div>}
+      </td>
+      <td className="px-3 py-3"><span className={`rounded px-2 py-1 text-xs font-semibold ${row.isManual ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>{row.isManual ? '수동' : '자동'}</span></td>
+      <td className="px-3 py-3 text-right">
+        <div className="flex justify-end gap-2">
+          {row.isManual && <button className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700" disabled={saving} onClick={async () => { setSaving(true); try { await api.deletePensionMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>자동값 복원</button>}
+          <button className="rounded-lg bg-zinc-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-950" disabled={saving} onClick={async () => { setSaving(true); try { await api.updatePensionMonth({ period: row.period, principal: Number(principal || 0), profit: Number(profit || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
