@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.5';
+const appVersion = 'v0.2.6';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -161,9 +161,9 @@ function triangleChartDot(props: { cx?: number; cy?: number; stroke?: string }) 
   return <path d={`M ${cx} ${cy - 4} L ${cx + 4} ${cy + 3} L ${cx - 4} ${cy + 3} Z`} fill={stroke} stroke="#fff" strokeWidth={0.75} />;
 }
 
-function activeTriangleChartDot(props: { cx?: number; cy?: number; stroke?: string }) {
-  const { cx = 0, cy = 0, stroke = pensionReturnColor } = props;
-  return <path d={`M ${cx} ${cy - 8} L ${cx + 8} ${cy + 6} L ${cx - 8} ${cy + 6} Z`} fill={stroke} stroke="#fff" strokeWidth={1.25} />;
+function activeTriangleChartDot(props: { cx?: number; cy?: number; fill?: string }) {
+  const { cx = 0, cy = 0, fill = pensionReturnColor } = props;
+  return <path d={`M ${cx} ${cy - 8} L ${cx + 8} ${cy + 6} L ${cx - 8} ${cy + 6} Z`} fill={fill} stroke="#fff" strokeWidth={1.25} />;
 }
 
 function ActivePieSector(props: {
