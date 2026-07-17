@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.6';
+const appVersion = 'v0.2.7';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1343,7 +1343,6 @@ function SettingsForm({
             <input
               className="hidden"
               type="file"
-              accept=".embbackup,application/json"
               disabled={backupSaving || backupRestoring}
               onChange={async (event) => {
                 const file = event.target.files?.[0];
