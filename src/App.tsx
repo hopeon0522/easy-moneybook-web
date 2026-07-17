@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.3';
+const appVersion = 'v0.2.4';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -175,27 +175,22 @@ function ActivePieSector(props: {
   startAngle?: number;
   endAngle?: number;
   fill?: string;
-  name?: string;
-  percent?: number;
 }) {
-  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#ff625a', name = '', percent = 0 } = props;
+  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#ff625a' } = props;
   const offset = 10;
   const x = cx + offset * Math.cos((-midAngle * Math.PI) / 180);
   const y = cy + offset * Math.sin((-midAngle * Math.PI) / 180);
   return (
-    <g>
-      <Sector
-        className="pie-active-sector"
-        cx={x}
-        cy={y}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 8}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-      />
-      {categoryLabel({ name, cx: x, cy: y, midAngle, innerRadius, outerRadius: outerRadius + 8, percent })}
-    </g>
+    <Sector
+      className="pie-active-sector"
+      cx={x}
+      cy={y}
+      innerRadius={innerRadius}
+      outerRadius={outerRadius + 8}
+      startAngle={startAngle}
+      endAngle={endAngle}
+      fill={fill}
+    />
   );
 }
 
