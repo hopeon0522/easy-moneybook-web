@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.0';
+const appVersion = 'v0.2.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -375,7 +375,10 @@ export default function App() {
                       ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950 dark:text-[#ff817b]'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
-                  onClick={() => setTab(item)}
+                  onClick={() => {
+                    setTab(item);
+                    if (item === '대시보드') window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 >
                   {item}
                 </button>
@@ -522,7 +525,7 @@ export default function App() {
                       ))}
                       <Tooltip content={<NetWorthTooltip mode={netWorthMode} />} />
                       <Line yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} strokeWidth={3} name="순자산" dot={{ r: 2 }} activeDot={{ r: 8 }} />
-                      <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={2.5} name="부채율" dot={false} activeDot={{ r: 6 }} />
+                      <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={2.5} name="부채율" dot={{ r: 2 }} activeDot={{ r: 6 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -563,9 +566,9 @@ export default function App() {
                         {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         <Tooltip content={<PensionTooltip />} />
-                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={false} activeDot={{ r: 6 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
                         <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
-                        <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={false} activeDot={{ r: 6 }} />
+                        <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={{ r: 2 }} activeDot={{ r: 6 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -966,10 +969,6 @@ function PensionTooltip({
 }
 
 function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | null; onSaved: () => Promise<void> }) {
-  const [period, setPeriod] = useState('');
-  const [principal, setPrincipal] = useState('');
-  const [profit, setProfit] = useState('');
-  const [saving, setSaving] = useState(false);
   const totals = [...(data?.rows ?? [])]
     .reverse()
     .reduce(
@@ -995,31 +994,6 @@ function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | 
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-[160px_1fr_1fr_auto] dark:border-zinc-800">
-          <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} aria-label="연금저축 년월" />
-          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월 원금 유입액" value={principal} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} />
-          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월 수익(수입)" value={profit} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
-          <button
-            className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            disabled={saving || !period}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await api.updatePensionMonth({ period, principal: Number(principal || 0), profit: Number(profit || 0) });
-                setPeriod('');
-                setPrincipal('');
-                setProfit('');
-                await onSaved();
-              } catch (error) {
-                window.alert(error instanceof Error ? error.message : '연금저축 데이터를 저장하지 못했습니다.');
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            추가/저장
-          </button>
-        </div>
       </section>
 
       <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
