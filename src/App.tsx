@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.4';
+const appVersion = 'v0.2.5';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1194,6 +1194,8 @@ function SettingsForm({
   const [manualAmount, setManualAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
+  const [backupSaving, setBackupSaving] = useState(false);
+  const [backupRestoring, setBackupRestoring] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -1306,6 +1308,69 @@ function SettingsForm({
           {saving ? '저장 중' : '저장'}
         </button>
       </div>
+
+      <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <h3 className="text-sm font-semibold">전체 데이터 백업 및 복원</h3>
+        <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+          거래, 자산, 연금저축, 수동 순자산과 모든 설정을 하나의 전용 백업 파일에 저장합니다.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <button
+            className="h-10 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-950"
+            disabled={backupSaving || backupRestoring}
+            onClick={async () => {
+              setBackupSaving(true);
+              try {
+                const result = await api.exportBackup();
+                window.alert(`${result.transactionCount.toLocaleString()}건의 거래가 포함된 백업 파일을 저장했습니다.`);
+              } catch (error) {
+                if (!(error instanceof DOMException && error.name === 'AbortError')) {
+                  window.alert(error instanceof Error ? error.message : '전체 데이터 백업에 실패했습니다.');
+                }
+              } finally {
+                setBackupSaving(false);
+              }
+            }}
+          >
+            {backupSaving ? '백업 중...' : '전체 데이터 백업'}
+          </button>
+          <label
+            className={`inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 ${
+              backupSaving || backupRestoring ? 'pointer-events-none opacity-50' : ''
+            }`}
+          >
+            {backupRestoring ? '복원 중...' : '전체 데이터 복원'}
+            <input
+              className="hidden"
+              type="file"
+              accept=".embbackup,application/json"
+              disabled={backupSaving || backupRestoring}
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = '';
+                if (!file) return;
+                setBackupRestoring(true);
+                try {
+                  const summary = await api.inspectBackup(file);
+                  const exportedAt = summary.exportedAt ? dayjs(summary.exportedAt).format('YYYY-MM-DD HH:mm') : '알 수 없음';
+                  const confirmed = window.confirm(
+                    `백업 일시: ${exportedAt}\n거래: ${summary.transactionCount.toLocaleString()}건\n자산: ${summary.assetCount.toLocaleString()}개\n업로드 기록: ${summary.importFileCount.toLocaleString()}개\n\n현재 브라우저의 모든 데이터를 이 백업으로 교체할까요?`
+                  );
+                  if (!confirmed) return;
+                  await api.restoreBackup(file);
+                  window.alert('전체 데이터 복원이 완료되었습니다. 복원된 화면을 다시 불러옵니다.');
+                  window.location.reload();
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : '전체 데이터 복원에 실패했습니다.');
+                } finally {
+                  setBackupRestoring(false);
+                }
+              }}
+            />
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-[#ff5a52]">복원하면 이 브라우저의 현재 데이터가 백업 파일의 내용으로 교체됩니다.</p>
+      </section>
 
       <details className="group border-t border-zinc-100 pt-5 dark:border-zinc-800">
         <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold [&::-webkit-details-marker]:hidden">

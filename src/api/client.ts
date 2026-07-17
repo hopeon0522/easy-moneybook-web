@@ -24,6 +24,26 @@ type LegacyPayload = {
   importFiles: Array<Record<string, unknown>>;
 };
 
+type BackupEnvelope = {
+  format: 'easy-moneybook-backup';
+  formatVersion: 1;
+  appVersion: string;
+  exportedAt: string;
+  data: LocalData;
+};
+
+type BackupSummary = {
+  exportedAt: string;
+  appVersion: string;
+  transactionCount: number;
+  assetCount: number;
+  importFileCount: number;
+};
+
+const backupFormatVersion = 1;
+const backupAppVersion = '0.2.5';
+const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
+
 const settingsDefaults: AppSettings = {
   appTitle: 'EasyMoneyBook Web',
   appSubtitle: '편한가계부 Excel 백업 분석 공간',
@@ -45,6 +65,81 @@ async function persist(data: LocalData): Promise<void> {
   const normalized = { ...data, pension_overrides: data.pension_overrides ?? [] };
   dataCache = normalized;
   await saveLocalData(normalized);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+async function readBackupFile(file: File): Promise<{ envelope: BackupEnvelope; summary: BackupSummary }> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    throw new Error('백업 파일을 읽을 수 없습니다. EasyMoneyBook 전용 백업 파일인지 확인해 주세요.');
+  }
+
+  if (!isObject(parsed) || parsed.format !== 'easy-moneybook-backup' || parsed.formatVersion !== backupFormatVersion || !isObject(parsed.data)) {
+    throw new Error('지원하지 않는 백업 파일입니다. EasyMoneyBook에서 만든 .embbackup 파일을 선택해 주세요.');
+  }
+
+  const rawData = parsed.data;
+  if (rawData.version !== 1 || backupArrayKeys.some((key) => !Array.isArray(rawData[key]))) {
+    throw new Error('백업 파일의 데이터 구조가 올바르지 않거나 손상되었습니다.');
+  }
+
+  const data = {
+    ...(rawData as unknown as LocalData),
+    pension_overrides: Array.isArray(rawData.pension_overrides) ? rawData.pension_overrides : []
+  };
+  const envelope: BackupEnvelope = {
+    format: 'easy-moneybook-backup',
+    formatVersion: 1,
+    appVersion: typeof parsed.appVersion === 'string' ? parsed.appVersion : '알 수 없음',
+    exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : '',
+    data
+  };
+
+  return {
+    envelope,
+    summary: {
+      exportedAt: envelope.exportedAt,
+      appVersion: envelope.appVersion,
+      transactionCount: data.transactions.length,
+      assetCount: data.assets.length,
+      importFileCount: data.import_files.length
+    }
+  };
+}
+
+async function saveBackupBlob(blob: Blob, fileName: string): Promise<void> {
+  type WritableFile = { write: (data: Blob) => Promise<void>; close: () => Promise<void> };
+  type FileHandle = { createWritable: () => Promise<WritableFile> };
+  type PickerWindow = Window & {
+    showSaveFilePicker?: (options: {
+      suggestedName: string;
+      types: Array<{ description: string; accept: Record<string, string[]> }>;
+    }) => Promise<FileHandle>;
+  };
+
+  const pickerWindow = window as PickerWindow;
+  if (pickerWindow.showSaveFilePicker) {
+    const handle = await pickerWindow.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [{ description: 'EasyMoneyBook 백업', accept: { 'application/json': ['.embbackup'] } }]
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function pensionMonthlyRows(transactions: Transaction[], data: LocalData): PensionSavingsData['rows'] {
@@ -472,14 +567,26 @@ export const api = {
     await persist(data);
     return { count: data.transactions.length };
   },
-  exportLocalData: async () => {
-    const blob = new Blob([JSON.stringify({ format: 'easy-moneybook-browser', exportedAt: new Date().toISOString(), data: await localData() })], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `easy-moneybook-local-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+  exportBackup: async () => {
+    const data = await localData();
+    const exportedAt = new Date().toISOString();
+    const envelope: BackupEnvelope = {
+      format: 'easy-moneybook-backup',
+      formatVersion: 1,
+      appVersion: backupAppVersion,
+      exportedAt,
+      data
+    };
+    const blob = new Blob([JSON.stringify(envelope)], { type: 'application/json' });
+    const fileName = `easy-moneybook-${exportedAt.slice(0, 10)}.embbackup`;
+    await saveBackupBlob(blob, fileName);
+    return { fileName, transactionCount: data.transactions.length };
+  },
+  inspectBackup: async (file: File) => (await readBackupFile(file)).summary,
+  restoreBackup: async (file: File) => {
+    const { envelope, summary } = await readBackupFile(file);
+    await persist(envelope.data);
+    return summary;
   },
   clearLocalData: async () => {
     await persist(emptyLocalData());
