@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.3.1';
+const appVersion = 'v0.3.2';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -595,9 +595,6 @@ export default function App() {
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-sm font-semibold">{pensionChartMode === 'savings' ? '연금저축' : '퇴직연금'}</h2>
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      {pensionChartMode === 'savings' ? '이체는 원금, 수입·기타 거래는 수익으로 누적 계산' : '수동 입력한 월 원금과 월 수익을 누적 표시'}
-                    </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
