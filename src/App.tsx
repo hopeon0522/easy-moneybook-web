@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { type ComponentType, useEffect, useMemo, useState } from 'react';
+import { type ComponentType, type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.3.0';
+const appVersion = 'v0.3.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -164,6 +164,33 @@ function triangleChartDot(props: { cx?: number; cy?: number; stroke?: string }) 
 function activeTriangleChartDot(props: { cx?: number; cy?: number; fill?: string }) {
   const { cx = 0, cy = 0, fill = pensionReturnColor } = props;
   return <path d={`M ${cx} ${cy - 8} L ${cx + 8} ${cy + 6} L ${cx - 8} ${cy + 6} Z`} fill={fill} stroke="#fff" strokeWidth={1.25} />;
+}
+
+function useUndoableText(initialValue: string) {
+  const [value, setCurrentValue] = useState(initialValue);
+  const undoStack = useRef<string[]>([]);
+  const redoStack = useRef<string[]>([]);
+
+  function setValue(nextValue: string) {
+    if (nextValue === value) return;
+    undoStack.current.push(value);
+    if (undoStack.current.length > 100) undoStack.current.shift();
+    redoStack.current = [];
+    setCurrentValue(nextValue);
+  }
+
+  function onKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+    const source = event.shiftKey ? redoStack : undoStack;
+    const target = event.shiftKey ? undoStack : redoStack;
+    const nextValue = source.current.pop();
+    if (nextValue == null) return;
+    event.preventDefault();
+    target.current.push(value);
+    setCurrentValue(nextValue);
+  }
+
+  return { value, setValue, onKeyDown };
 }
 
 function ActivePieSector(props: {
@@ -1654,7 +1681,7 @@ function AssetRow({
 }) {
   const [kind, setKind] = useState<AssetKind>(asset.kind);
   const [linkedAsset, setLinkedAsset] = useState(asset.linkedAsset ?? '');
-  const [initialValue, setInitialValue] = useState(String(Math.round(asset.initialValue ?? 0)));
+  const { value: initialValue, setValue: setInitialValue, onKeyDown: undoInitialValue } = useUndoableText(String(Math.round(asset.initialValue ?? 0)));
   const [isExcluded, setIsExcluded] = useState(Boolean(asset.isHidden));
   const [isArchived, setIsArchived] = useState(Boolean(asset.isArchived));
   const [saving, setSaving] = useState(false);
@@ -1696,6 +1723,7 @@ function AssetRow({
           type="number"
           value={initialValue}
           onChange={(event) => setInitialValue(event.target.value)}
+          onKeyDown={undoInitialValue}
         />
       </td>
       <td className="px-3 py-3">
