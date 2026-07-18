@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.2.9';
+const appVersion = 'v0.3.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -205,6 +205,7 @@ export default function App() {
   const [categoryMode, setCategoryMode] = useState<'expense' | 'income'>('expense');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [netWorthMode, setNetWorthMode] = useState<'monthly' | 'yearly'>('monthly');
+  const [pensionChartMode, setPensionChartMode] = useState<'savings' | 'retirement'>('savings');
   const [hiddenAssetsCollapsed, setHiddenAssetsCollapsed] = useState(true);
   const [dashboardPieActiveIndex, setDashboardPieActiveIndex] = useState<number | undefined>();
   const [categoryPieActiveIndex, setCategoryPieActiveIndex] = useState<number | undefined>();
@@ -225,6 +226,7 @@ export default function App() {
   const imports = useAsync(api.imports, []);
   const manualNetWorth = useAsync(api.manualNetWorth, []);
   const pensionSavings = useAsync(api.pensionSavings, []);
+  const retirementPension = useAsync(api.retirementPension, []);
   const effectivePeriod = selectedPeriod || dashboard.data?.summary.latestPeriod || periods.data?.[0] || '';
   const categoryExpense = useAsync(() => api.categoryExpense(effectivePeriod, categoryMode), [categoryMode, effectivePeriod]);
 
@@ -265,6 +267,7 @@ export default function App() {
       imports.reload(),
       manualNetWorth.reload(),
       pensionSavings.reload(),
+      retirementPension.reload(),
       categoryExpense.reload(),
       transactions.reload(),
       calendarTransactions.reload(),
@@ -317,7 +320,7 @@ export default function App() {
   const chartGridYWon = settings.data?.chartGridYWon ?? 100_000_000;
   const netWorthXTicks = useMemo(() => gridMonthTicks(netWorthRows, chartGridXMonths), [chartGridXMonths, netWorthRows]);
   const netWorthYTicks = useMemo(() => moneyGridTicks(netWorthRows, chartGridYWon), [chartGridYWon, netWorthRows]);
-  const pensionRows = useMemo(
+  const savingsPensionRows = useMemo(
     () =>
       (dashboard.data?.pensionLine ?? []).map((row) => ({
         ...row,
@@ -326,6 +329,25 @@ export default function App() {
       })),
     [dashboard.data?.pensionLine]
   );
+  const retirementPensionRows = useMemo(() => {
+    let principal = 0;
+    let profit = 0;
+    return [...(retirementPension.data?.rows ?? [])]
+      .reverse()
+      .map((row) => {
+        principal += row.principal;
+        profit += row.profit;
+        return {
+          month: row.period,
+          principal,
+          profit,
+          total: principal + profit,
+          xValue: monthToTime(row.period),
+          returnRate: principal ? (profit / principal) * 100 : 0
+        };
+      });
+  }, [retirementPension.data?.rows]);
+  const pensionRows = pensionChartMode === 'savings' ? savingsPensionRows : retirementPensionRows;
   const pensionChartGridXMonths = settings.data?.pensionChartGridXMonths ?? 12;
   const pensionChartGridYWon = settings.data?.pensionChartGridYWon ?? 10_000_000;
   const pensionXTicks = useMemo(() => gridMonthTicks(pensionRows, pensionChartGridXMonths), [pensionChartGridXMonths, pensionRows]);
@@ -545,16 +567,22 @@ export default function App() {
               <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold">삼성증권 연금저축 변화</h2>
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">이체는 원금, 수입·기타 거래는 수익으로 누적 계산</p>
+                    <h2 className="text-sm font-semibold">{pensionChartMode === 'savings' ? '연금저축' : '퇴직연금'}</h2>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      {pensionChartMode === 'savings' ? '이체는 원금, 수입·기타 거래는 수익으로 누적 계산' : '수동 입력한 월 원금과 월 수익을 누적 표시'}
+                    </p>
                   </div>
-                  {pensionRows.length > 0 && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'savings' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('savings')}>연금저축</button>
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'retirement' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('retirement')}>퇴직연금</button>
+                    </div>
+                    {pensionRows.length > 0 && <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs">
                       <span className="text-zinc-500">원금 <strong className="ml-1 text-[#2f8cff]">{formatMoney(pensionRows[pensionRows.length - 1].principal)}</strong></span>
                       <span className="text-zinc-500">수익 <strong className={`ml-1 ${pensionRows[pensionRows.length - 1].profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(pensionRows[pensionRows.length - 1].profit)}</strong></span>
                       <span className="text-zinc-500">총액 <strong className="ml-1 text-zinc-950 dark:text-white">{formatMoney(pensionRows[pensionRows.length - 1].total)}</strong></span>
-                    </div>
-                  )}
+                    </div>}
+                  </div>
                 </div>
                 {pensionRows.length > 0 ? (
                   <div className="h-72">
@@ -584,7 +612,7 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="grid h-40 place-items-center text-sm text-zinc-500">삼성증권연금저축 거래가 없습니다.</div>
+                  <div className="grid h-40 place-items-center text-sm text-zinc-500">{pensionChartMode === 'savings' ? '연금저축 거래가 없습니다.' : '입력된 퇴직연금 데이터가 없습니다.'}</div>
                 )}
               </section>
 
@@ -793,7 +821,7 @@ export default function App() {
           )}
 
           {tab === '연금저축' && (
-            <PensionSavingsManager data={pensionSavings.data} onSaved={refreshAll} />
+            <PensionManager savingsData={pensionSavings.data} retirementData={retirementPension.data} onSaved={refreshAll} />
           )}
 
           {tab === '백업' && (
@@ -841,9 +869,9 @@ export default function App() {
             </section>
           )}
 
-          {(dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error) && (
+          {(dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error || pensionSavings.error || retirementPension.error) && (
             <div className="mt-4 rounded-lg bg-rose-100 p-3 text-sm text-rose-700">
-              {dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error}
+              {dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error || pensionSavings.error || retirementPension.error}
             </div>
           )}
           {(dashboard.loading || transactions.loading || calendarTransactions.loading) && <div className="mt-4 text-sm text-zinc-500">불러오는 중...</div>}
@@ -980,6 +1008,27 @@ function PensionTooltip({
   );
 }
 
+function PensionManager({
+  savingsData,
+  retirementData,
+  onSaved
+}: {
+  savingsData?: PensionSavingsData | null;
+  retirementData?: PensionSavingsData | null;
+  onSaved: () => Promise<void>;
+}) {
+  const [mode, setMode] = useState<'savings' | 'retirement'>('savings');
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 rounded-lg border border-zinc-200 bg-white p-1.5 dark:border-zinc-800 dark:bg-zinc-900">
+        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'savings' ? 'bg-[#ff5a52] text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('savings')}>연금저축</button>
+        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'retirement' ? 'bg-[#ff5a52] text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('retirement')}>퇴직연금</button>
+      </div>
+      {mode === 'savings' ? <PensionSavingsManager data={savingsData} onSaved={onSaved} /> : <RetirementPensionManager data={retirementData} onSaved={onSaved} />}
+    </div>
+  );
+}
+
 function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | null; onSaved: () => Promise<void> }) {
   const totals = [...(data?.rows ?? [])]
     .reverse()
@@ -1025,6 +1074,108 @@ function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | 
         </div>
       </section>
     </div>
+  );
+}
+
+function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData | null; onSaved: () => Promise<void> }) {
+  const [year, setYear] = useState('');
+  const [month, setMonth] = useState('');
+  const [principal, setPrincipal] = useState('');
+  const [profit, setProfit] = useState('');
+  const [saving, setSaving] = useState(false);
+  const totals = (data?.rows ?? []).reduce(
+    (result, row) => ({ principal: result.principal + row.principal, profit: result.profit + row.profit }),
+    { principal: 0, profit: 0 }
+  );
+  const total = totals.principal + totals.profit;
+  const returnRate = totals.principal ? (totals.profit / totals.principal) * 100 : null;
+
+  return (
+    <div className="space-y-4">
+      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">퇴직연금 월별 관리</h2>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">자산 및 순자산 계산과 분리된 수동 데이터입니다. 입력한 월 원금과 월 수익만 그래프에 누적됩니다.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:grid-cols-4">
+            <div><span className="block text-zinc-500">누적 원금</span><strong className="mt-1 block text-sm text-[#2f8cff]">{formatMoney(totals.principal)}</strong></div>
+            <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(totals.profit)}</strong></div>
+            <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-[#ff5a52] dark:text-[#ff817b]">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-[0.8fr_0.6fr_1.2fr_1.2fr_auto]">
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="년" value={year} onChange={(event) => setYear(event.target.value.replace(/\D/g, '').slice(0, 4))} />
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월" value={month} onChange={(event) => setMonth(event.target.value.replace(/\D/g, '').slice(0, 2))} />
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월 원금" value={principal} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} />
+          <input className={`rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-[#ff5a52]' : ''}`} inputMode="numeric" placeholder="월 수익" value={profit} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
+          <button
+            className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await api.updateRetirementMonth({ period: `${year}-${month.padStart(2, '0')}`, principal: Number(principal || 0), profit: Number(profit || 0) });
+                setYear('');
+                setMonth('');
+                setPrincipal('');
+                setProfit('');
+                await onSaved();
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : '퇴직연금 데이터를 저장하지 못했습니다.');
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            추가
+          </button>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-auto">
+          <table className="min-w-[680px] w-full text-sm">
+            <thead className="bg-zinc-50 text-left text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+              <tr><th className="px-3 py-3">년/월</th><th className="px-3 py-3 text-right">월 원금</th><th className="px-3 py-3 text-right">월 수익</th><th className="px-3 py-3 text-right">관리</th></tr>
+            </thead>
+            <tbody>
+              {(data?.rows ?? []).length ? (
+                (data?.rows ?? []).map((row) => <RetirementMonthRow key={row.period} row={row} onSaved={onSaved} />)
+              ) : (
+                <tr><td className="px-3 py-5 text-zinc-500" colSpan={4}>입력된 퇴직연금 월별 데이터가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RetirementMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][number]; onSaved: () => Promise<void> }) {
+  const [principal, setPrincipal] = useState(String(row.principal));
+  const [profit, setProfit] = useState(String(row.profit));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPrincipal(String(row.principal));
+    setProfit(String(row.profit));
+  }, [row.principal, row.profit]);
+
+  return (
+    <tr className="border-t border-zinc-100 dark:border-zinc-800">
+      <td className="px-3 py-3 font-semibold">{row.period}</td>
+      <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" value={principal} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
+      <td className="px-3 py-3 text-right"><input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-[#ff5a52]' : ''}`} inputMode="numeric" value={profit} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
+      <td className="px-3 py-3 text-right">
+        <div className="flex justify-end gap-2">
+          <button className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-[#ff5a52] dark:border-red-900" disabled={saving} onClick={async () => { if (!window.confirm(`${row.period} 퇴직연금 데이터를 삭제할까요?`)) return; setSaving(true); try { await api.deleteRetirementMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>삭제</button>
+          <button className="rounded-lg bg-zinc-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-950" disabled={saving} onClick={async () => { setSaving(true); try { await api.updateRetirementMonth({ period: row.period, principal: Number(principal || 0), profit: Number(profit || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>
+        </div>
+      </td>
+    </tr>
   );
 }
 

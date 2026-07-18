@@ -38,6 +38,7 @@ export type LocalData = {
   settings: Array<{ key: string; value: string; updated_at: string }>;
   manual_net_worth: Array<{ id: number; period: string; amount: number; created_at: string; updated_at: string }>;
   pension_overrides: Array<{ period: string; principal: number; profit: number; updated_at: string }>;
+  retirement_pension: Array<{ period: string; principal: number; profit: number; updated_at: string }>;
   import_files: Array<{
     id: number;
     source_file: string;
@@ -63,6 +64,7 @@ export function emptyLocalData(): LocalData {
     settings: [],
     manual_net_worth: [],
     pension_overrides: [],
+    retirement_pension: [],
     import_files: []
   };
 }
@@ -72,7 +74,8 @@ function normalizeLocalData(data?: LocalData): LocalData {
   return {
     ...emptyLocalData(),
     ...data,
-    pension_overrides: Array.isArray(data.pension_overrides) ? data.pension_overrides : []
+    pension_overrides: Array.isArray(data.pension_overrides) ? data.pension_overrides : [],
+    retirement_pension: Array.isArray(data.retirement_pension) ? data.retirement_pension : []
   };
 }
 

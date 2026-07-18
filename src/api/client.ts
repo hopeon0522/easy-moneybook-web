@@ -41,7 +41,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.2.9';
+const backupAppVersion = '0.3.0';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -62,7 +62,11 @@ async function localData(): Promise<LocalData> {
 }
 
 async function persist(data: LocalData): Promise<void> {
-  const normalized = { ...data, pension_overrides: data.pension_overrides ?? [] };
+  const normalized = {
+    ...data,
+    pension_overrides: data.pension_overrides ?? [],
+    retirement_pension: data.retirement_pension ?? []
+  };
   dataCache = normalized;
   await saveLocalData(normalized);
 }
@@ -90,7 +94,8 @@ async function readBackupFile(file: File): Promise<{ envelope: BackupEnvelope; s
 
   const data = {
     ...(rawData as unknown as LocalData),
-    pension_overrides: Array.isArray(rawData.pension_overrides) ? rawData.pension_overrides : []
+    pension_overrides: Array.isArray(rawData.pension_overrides) ? rawData.pension_overrides : [],
+    retirement_pension: Array.isArray(rawData.retirement_pension) ? rawData.retirement_pension : []
   };
   const envelope: BackupEnvelope = {
     format: 'easy-moneybook-backup',
@@ -186,6 +191,20 @@ async function pensionSavings(): Promise<PensionSavingsData> {
     initialValue: assets.find((asset) => asset.name === pensionAssetName)?.initial_value ?? 0,
     rows: pensionMonthlyRows(transactions, data).reverse()
   };
+}
+
+async function retirementPension(): Promise<PensionSavingsData> {
+  const rows = [...((await localData()).retirement_pension ?? [])]
+    .sort((a, b) => b.period.localeCompare(a.period))
+    .map((row) => ({
+      period: row.period,
+      principal: row.principal,
+      profit: row.profit,
+      autoPrincipal: 0,
+      autoProfit: 0,
+      isManual: true
+    }));
+  return { assetName: '퇴직연금', initialValue: 0, rows };
 }
 
 function mapTransaction(row: LocalData['transactions'][number]): Transaction {
@@ -447,6 +466,7 @@ function legacyToLocal(payload: LegacyPayload): LocalData {
     settings: payload.settings.map((row) => ({ key: String(row.key ?? ''), value: String(row.value ?? ''), updated_at: String(row.updatedAt ?? now) })),
     manual_net_worth: payload.manualNetWorth.map((row, index) => ({ id: Number(row.id ?? index + 1), period: String(row.period ?? ''), amount: Number(row.amount ?? 0), created_at: String(row.createdAt ?? now), updated_at: String(row.updatedAt ?? now) })),
     pension_overrides: [],
+    retirement_pension: [],
     import_files: payload.importFiles.map((row, index) => ({ id: Number(row.id ?? index + 1), source_file: String(row.sourceFile ?? ''), transaction_count: Number(row.transactionCount ?? 0), first_date: String(row.firstDate ?? ''), last_date: String(row.lastDate ?? ''), uploaded_at: String(row.uploadedAt ?? now), updated_at: String(row.updatedAt ?? now) }))
   };
 }
@@ -454,6 +474,7 @@ function legacyToLocal(payload: LegacyPayload): LocalData {
 export const api = {
   dashboard,
   pensionSavings,
+  retirementPension,
   updatePensionMonth: async (input: { period: string; principal: number; profit: number }) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
     if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('원금과 수익을 숫자로 입력해 주세요.');
@@ -468,6 +489,23 @@ export const api = {
   deletePensionMonth: async (period: string) => {
     const data = await localData();
     data.pension_overrides = (data.pension_overrides ?? []).filter((row) => row.period !== period);
+    await persist(data);
+    return { ok: true as const };
+  },
+  updateRetirementMonth: async (input: { period: string; principal: number; profit: number }) => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
+    if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('원금과 수익을 숫자로 입력해 주세요.');
+    const data = await localData();
+    const now = new Date().toISOString();
+    const row = (data.retirement_pension ?? []).find((item) => item.period === input.period);
+    if (row) Object.assign(row, { principal: input.principal, profit: input.profit, updated_at: now });
+    else data.retirement_pension.push({ period: input.period, principal: input.principal, profit: input.profit, updated_at: now });
+    await persist(data);
+    return { ok: true as const };
+  },
+  deleteRetirementMonth: async (period: string) => {
+    const data = await localData();
+    data.retirement_pension = (data.retirement_pension ?? []).filter((row) => row.period !== period);
     await persist(data);
     return { ok: true as const };
   },
