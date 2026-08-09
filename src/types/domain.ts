@@ -85,6 +85,19 @@ export interface AppSettings {
   chartGridYWon: number;
   pensionChartGridXMonths: number;
   pensionChartGridYWon: number;
+  wealthBenchmark: WealthBenchmark | null;
+}
+
+export interface WealthBenchmark {
+  surveyYear: number;
+  referenceDate: string;
+  publishedAt: string;
+  refreshedAt: string;
+  averageNetWorth: number;
+  medianNetWorth: number;
+  percentiles: Array<{ percentile: number; amount: number }>;
+  sourceName: string;
+  sourceUrl: string;
 }
 
 export interface ManualNetWorthPoint {

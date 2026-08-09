@@ -21,7 +21,7 @@ import { StatCard } from './components/StatCard';
 import { TransactionTable } from './components/TransactionTable';
 import { UploadDropzone } from './components/UploadDropzone';
 import { useAsync } from './hooks/useAsync';
-import { AppSettings, AssetKind, ManualNetWorthPoint, PensionSavingsData } from './types/domain';
+import { AppSettings, AssetKind, ManualNetWorthPoint, PensionSavingsData, WealthBenchmark } from './types/domain';
 import { formatMoney } from './utils/format';
 
 const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.8';
+const appVersion = 'v0.5.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -161,6 +161,35 @@ function buildProjectionRange(minimum: number, maximum: number, interval: number
 
 function projectionColor(index: number) {
   return pieColors[index % pieColors.length];
+}
+
+function estimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
+  const points = benchmark?.percentiles?.filter((row) => row.amount > 0).sort((a, b) => a.amount - b.amount) ?? [];
+  if (!Number.isFinite(value) || value <= 0 || points.length < 2) return null;
+
+  let populationPercentile: number;
+  if (value <= points[0].amount) {
+    populationPercentile = (value / points[0].amount) * points[0].percentile;
+  } else {
+    const upperIndex = points.findIndex((row) => value <= row.amount);
+    const lower = upperIndex > 0 ? points[upperIndex - 1] : points.at(-2)!;
+    const upper = upperIndex > 0 ? points[upperIndex] : points.at(-1)!;
+    const amountPosition = (Math.log(value) - Math.log(lower.amount)) / (Math.log(upper.amount) - Math.log(lower.amount));
+    populationPercentile = lower.percentile + amountPosition * (upper.percentile - lower.percentile);
+  }
+  return Math.max(0.1, Math.min(99.9, 100 - populationPercentile));
+}
+
+function formatEstimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
+  const percent = estimatedTopPercent(value, benchmark);
+  if (percent == null) return '백분율 산정 불가';
+  if (percent < 1) return '추정 상위 1% 미만';
+  return `추정 상위 ${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
+}
+
+function formatBenchmarkDifference(value: number, reference: number) {
+  const difference = value - reference;
+  return `${difference >= 0 ? '+' : '-'}${formatKoreanMoney(Math.abs(difference))}`;
 }
 
 function gridMonthTicks(rows: Array<{ xValue: number }>, intervalMonths: number) {
@@ -998,6 +1027,7 @@ export default function App() {
             <AssetProjection
               latestNetWorth={dashboard.data?.summary.netWorth ?? 0}
               latestPeriod={dashboard.data?.summary.latestPeriod ?? ''}
+              benchmark={settings.data?.wealthBenchmark ?? null}
             />
           )}
 
@@ -1020,7 +1050,15 @@ export default function App() {
   );
 }
 
-function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: number; latestPeriod: string }) {
+function AssetProjection({
+  latestNetWorth,
+  latestPeriod,
+  benchmark
+}: {
+  latestNetWorth: number;
+  latestPeriod: string;
+  benchmark: WealthBenchmark | null;
+}) {
   const [baseValue, setBaseValue] = useState('');
   const [baseEdited, setBaseEdited] = useState(false);
   const [minimumRate, setMinimumRate] = useState('5');
@@ -1114,6 +1152,17 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
               <span className="shrink-0 text-xs text-zinc-500">원</span>
             </div>
             <span className="mt-1.5 block min-h-4 text-right text-[11px] font-medium text-[#18a667] dark:text-emerald-300">{formatKoreanMoney(base)}</span>
+            {benchmark ? (
+              <span className="mt-2 block border-t border-zinc-100 pt-2 text-right text-[10px] font-normal leading-5 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                <strong className="block text-[11px] font-semibold text-[#18a667] dark:text-emerald-300">대한민국 가구 기준 {formatEstimatedTopPercent(base, benchmark)}</strong>
+                <span className="block">평균 대비 {formatBenchmarkDifference(base, benchmark.averageNetWorth)} · 중앙값 대비 {formatBenchmarkDifference(base, benchmark.medianNetWorth)}</span>
+                <span className="block">{benchmark.referenceDate} 기준 · {benchmark.surveyYear}년 조사 · 가구·부동산 포함</span>
+                <span className="block">갱신 {dayjs(benchmark.refreshedAt).format('YYYY.MM.DD HH:mm')}</span>
+                <a className="font-medium text-zinc-600 underline underline-offset-2 dark:text-zinc-300" href={benchmark.sourceUrl} target="_blank" rel="noreferrer">공식 통계 출처</a>
+              </span>
+            ) : (
+              <span className="mt-2 block text-right text-[10px] font-normal text-zinc-400">설정에서 대한민국 가구 순자산 통계를 갱신해 주세요.</span>
+            )}
           </label>
           <fieldset className="border-t border-zinc-100 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-zinc-800">
             <legend className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">연 증가율</legend>
@@ -1203,6 +1252,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
                     return (
                       <td key={rate} className="overflow-hidden px-0.5 py-2.5 text-center font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
                         <span>{compactAmount}</span><span className="block sm:inline">억</span>
+                        <span className="mt-1 block text-[8px] font-normal leading-none text-zinc-400 sm:text-[10px] lg:text-[12px]">{formatEstimatedTopPercent(amount, benchmark)}</span>
                       </td>
                     );
                   })}
@@ -1682,6 +1732,7 @@ function SettingsForm({
   const [manualSaving, setManualSaving] = useState(false);
   const [backupSaving, setBackupSaving] = useState(false);
   const [backupRestoring, setBackupRestoring] = useState(false);
+  const [benchmarkRefreshing, setBenchmarkRefreshing] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -1783,7 +1834,8 @@ function SettingsForm({
                 chartGridXMonths: Number(chartGridXMonths || 12),
                 chartGridYWon: Number(chartGridYHundredMillion || 1) * 100_000_000,
                 pensionChartGridXMonths: Number(pensionChartGridXMonths || 12),
-                pensionChartGridYWon: Number(pensionChartGridYTenThousand || 1000) * 10_000
+                pensionChartGridYWon: Number(pensionChartGridYTenThousand || 1000) * 10_000,
+                wealthBenchmark: settings?.wealthBenchmark ?? null
               });
               await onSaved();
             } finally {
@@ -1794,6 +1846,45 @@ function SettingsForm({
           {saving ? '저장 중' : '저장'}
         </button>
       </div>
+
+      <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">대한민국 가구 순자산 통계</h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              국가데이터처·한국은행·금융감독원의 공식 가계금융복지조사 통계입니다. 가구 단위이며 부동산 등 실물자산을 포함합니다.
+            </p>
+          </div>
+          <button
+            className="rounded-lg bg-[#18a667] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            disabled={benchmarkRefreshing}
+            onClick={async () => {
+              setBenchmarkRefreshing(true);
+              try {
+                await api.refreshWealthBenchmark();
+                await onSaved();
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : '공식 순자산 통계 갱신에 실패했습니다.');
+              } finally {
+                setBenchmarkRefreshing(false);
+              }
+            }}
+          >
+            {benchmarkRefreshing ? '갱신 중...' : '공식 통계 갱신'}
+          </button>
+        </div>
+        {settings?.wealthBenchmark ? (
+          <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            <p>전국 평균 {formatKoreanMoney(settings.wealthBenchmark.averageNetWorth)} · 중앙값 {formatKoreanMoney(settings.wealthBenchmark.medianNetWorth)}</p>
+            <p>{settings.wealthBenchmark.referenceDate} 기준 · {settings.wealthBenchmark.surveyYear}년 조사 · 발표 {settings.wealthBenchmark.publishedAt}</p>
+            <p>마지막 갱신 {dayjs(settings.wealthBenchmark.refreshedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
+            <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-zinc-400">아직 통계를 받아오지 않았습니다. 위 버튼을 눌러 최초 갱신해 주세요.</p>
+        )}
+        <p className="mt-2 text-[11px] leading-4 text-zinc-400">표의 백분율은 공식 10분위 경계값 사이를 보간한 추정치이며 개인이 아닌 가구 순자산 비교입니다.</p>
+      </section>
 
       <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">전체 데이터 백업 및 복원</h3>

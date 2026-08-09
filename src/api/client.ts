@@ -8,7 +8,8 @@ import {
   ManualNetWorthPoint,
   Metadata,
   PensionSavingsData,
-  Transaction
+  Transaction,
+  WealthBenchmark
 } from '../types/domain';
 import { parseEasyMoneyBookFile } from '../lib/excelParser';
 import { emptyLocalData, loadLocalData, LocalAssetRow, LocalData, nextId, saveLocalData } from '../lib/localStore';
@@ -41,7 +42,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.4.8';
+const backupAppVersion = '0.5.0';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -50,7 +51,8 @@ const settingsDefaults: AppSettings = {
   chartGridXMonths: 12,
   chartGridYWon: 100_000_000,
   pensionChartGridXMonths: 12,
-  pensionChartGridYWon: 10_000_000
+  pensionChartGridYWon: 10_000_000,
+  wealthBenchmark: null
 };
 const pensionAssetName = '삼성증권연금저축';
 
@@ -347,13 +349,20 @@ async function dashboard(): Promise<DashboardData> {
 
 async function settings(): Promise<AppSettings> {
   const values = Object.fromEntries((await localData()).settings.map((row) => [row.key, row.value]));
+  let wealthBenchmark: WealthBenchmark | null = null;
+  try {
+    wealthBenchmark = values.wealthBenchmark ? JSON.parse(values.wealthBenchmark) as WealthBenchmark : null;
+  } catch {
+    wealthBenchmark = null;
+  }
   return {
     appTitle: values.appTitle || settingsDefaults.appTitle,
     appSubtitle: values.appSubtitle || settingsDefaults.appSubtitle,
     chartGridXMonths: Math.max(1, Number(values.chartGridXMonths || settingsDefaults.chartGridXMonths)),
     chartGridYWon: Math.max(100_000_000, Number(values.chartGridYWon || settingsDefaults.chartGridYWon)),
     pensionChartGridXMonths: Math.max(1, Number(values.pensionChartGridXMonths || settingsDefaults.pensionChartGridXMonths)),
-    pensionChartGridYWon: Math.max(10_000, Number(values.pensionChartGridYWon || settingsDefaults.pensionChartGridYWon))
+    pensionChartGridYWon: Math.max(10_000, Number(values.pensionChartGridYWon || settingsDefaults.pensionChartGridYWon)),
+    wealthBenchmark
   };
 }
 
@@ -374,7 +383,35 @@ async function updateSettings(input: AppSettings): Promise<AppSettings> {
     else data.settings.push({ key, value: String(value), updated_at: now });
   }
   await persist(data);
-  return next;
+  return { ...next, wealthBenchmark: input.wealthBenchmark };
+}
+
+async function refreshWealthBenchmark(): Promise<WealthBenchmark> {
+  const response = await fetch(`${import.meta.env.BASE_URL}korea-net-worth-2025.json?t=${Date.now()}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('공식 순자산 통계 자료를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  const raw = await response.json() as Omit<WealthBenchmark, 'refreshedAt'>;
+  if (
+    !Number.isFinite(raw.averageNetWorth) ||
+    !Number.isFinite(raw.medianNetWorth) ||
+    !Array.isArray(raw.percentiles) ||
+    raw.percentiles.length < 2
+  ) throw new Error('공식 순자산 통계 자료의 형식이 올바르지 않습니다.');
+
+  const benchmark: WealthBenchmark = {
+    ...raw,
+    percentiles: raw.percentiles
+      .map((row) => ({ percentile: Number(row.percentile), amount: Number(row.amount) }))
+      .filter((row) => Number.isFinite(row.percentile) && Number.isFinite(row.amount))
+      .sort((a, b) => a.percentile - b.percentile),
+    refreshedAt: new Date().toISOString()
+  };
+  const data = await localData();
+  const now = new Date().toISOString();
+  const row = data.settings.find((item) => item.key === 'wealthBenchmark');
+  if (row) Object.assign(row, { value: JSON.stringify(benchmark), updated_at: now });
+  else data.settings.push({ key: 'wealthBenchmark', value: JSON.stringify(benchmark), updated_at: now });
+  await persist(data);
+  return benchmark;
 }
 
 async function metadata(): Promise<Metadata> {
@@ -511,6 +548,7 @@ export const api = {
   },
   settings,
   updateSettings,
+  refreshWealthBenchmark,
   manualNetWorth,
   addManualNetWorth: async (input: { period: string; amount: number }) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
