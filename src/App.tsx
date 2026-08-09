@@ -32,7 +32,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.2';
+const appVersion = 'v0.4.3';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1231,7 +1231,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
                     </td>
                     {forecastYears.map((year) => (
                       <td key={year} className="px-3 py-2.5 text-right tabular-nums">
-                        {formatMoney(base * (1 + rate / 100) ** year)}
+                        {formatKoreanMoney(base * (1 + rate / 100) ** year)}
                       </td>
                     ))}
                   </tr>
