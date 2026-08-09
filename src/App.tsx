@@ -32,7 +32,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.3';
+const appVersion = 'v0.4.4';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -155,9 +155,8 @@ function buildProjectionRange(minimum: number, maximum: number, interval: number
   return values;
 }
 
-function projectionColor(index: number, total: number) {
-  const hue = total <= 1 ? 153 : 4 + (index * 235) / Math.max(total - 1, 1);
-  return `hsl(${hue} 64% 66%)`;
+function projectionColor(index: number) {
+  return pieColors[index % pieColors.length];
 }
 
 function ProjectionYearTick({ x = 0, y = 0, payload, baseYear }: { x?: number | string; y?: number | string; payload?: { value: number }; baseYear: number }) {
@@ -1060,7 +1059,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
     [safeMaximumYear, safeMinimumYear, safeYearInterval]
   );
   const scenarios = useMemo(
-    () => scenarioRates.map((rate, index) => ({ rate, key: `scenario_${index}`, color: projectionColor(index, scenarioRates.length) })),
+    () => scenarioRates.map((rate, index) => ({ rate, key: `scenario_${index}`, color: projectionColor(index) })),
     [scenarioRates]
   );
   const projectionRows = useMemo(
