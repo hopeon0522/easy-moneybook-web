@@ -32,7 +32,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.4';
+const appVersion = 'v0.4.5';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -139,6 +139,18 @@ function formatKoreanMoney(value: number) {
   if (tenThousands) parts.push(`${tenThousands}만`);
   if (won || !parts.length) parts.push(String(won));
   return `${value < 0 ? '-' : ''}${parts.join('')}원`;
+}
+
+function KoreanMoneyWithBoldBillions({ value }: { value: number }) {
+  const formatted = formatKoreanMoney(value);
+  const match = formatted.match(/^(-?[\d,]+억)(.*)$/);
+  if (!match) return <>{formatted}</>;
+  return (
+    <>
+      <strong className="font-bold text-zinc-900 dark:text-zinc-100">{match[1]}</strong>
+      {match[2]}
+    </>
+  );
 }
 
 function buildProjectionRange(minimum: number, maximum: number, interval: number, limit: number, decimals = 0) {
@@ -1230,7 +1242,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
                     </td>
                     {forecastYears.map((year) => (
                       <td key={year} className="px-3 py-2.5 text-right tabular-nums">
-                        {formatKoreanMoney(base * (1 + rate / 100) ** year)}
+                        <KoreanMoneyWithBoldBillions value={base * (1 + rate / 100) ** year} />
                       </td>
                     ))}
                   </tr>
