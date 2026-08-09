@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.3.2';
+const appVersion = 'v0.3.3';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -341,6 +341,18 @@ export default function App() {
       delta: index === 0 ? null : row.netWorth - rows[index - 1].netWorth
     }));
   }, [dashboard.data?.assetLine, dashboard.data?.assetLineYearly, dashboard.data?.debtRatioLine, dashboard.data?.debtRatioLineYearly, netWorthMode]);
+  const annualNetWorthSummary = useMemo(
+    () =>
+      netWorthMode === 'yearly'
+        ? netWorthRows.map((row, index) => {
+            const previous = netWorthRows[index - 1];
+            const increase = previous ? row.netWorth - previous.netWorth : null;
+            const growthRate = previous && previous.netWorth !== 0 && increase != null ? (increase / Math.abs(previous.netWorth)) * 100 : null;
+            return { ...row, increase, growthRate };
+          })
+        : [],
+    [netWorthMode, netWorthRows]
+  );
   const dashboardPieRows = (dashboard.data?.categoryPie ?? []).map((row, index) => ({ ...row, color: pieColors[index % pieColors.length] }));
   const categoryPieRows = (categoryExpense.data?.rows ?? []).map((row, index) => ({ ...row, color: pieColors[index % pieColors.length] }));
   const chartGridXMonths = settings.data?.chartGridXMonths ?? 12;
@@ -589,6 +601,43 @@ export default function App() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                {netWorthMode === 'yearly' && annualNetWorthSummary.length > 0 && (
+                  <div className="-mx-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">연도별 순자산 증감</h3>
+                      <span className="text-[11px] text-zinc-400">각 연도의 마지막 업데이트 월 기준</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[620px] text-sm">
+                        <thead className="bg-zinc-50 text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+                          <tr>
+                            <th className="px-4 py-3 text-left">기준 시점</th>
+                            <th className="px-4 py-3 text-right">기말 순자산</th>
+                            <th className="px-4 py-3 text-right">증가율</th>
+                            <th className="px-4 py-3 text-right">증가액</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {annualNetWorthSummary.map((row) => {
+                            const changeClass = row.increase == null ? 'text-zinc-400' : row.increase >= 0 ? 'text-[#18a667]' : 'text-[#ff5a52]';
+                            return (
+                              <tr key={row.month} className="border-t border-zinc-100 dark:border-zinc-800">
+                                <td className="px-4 py-3 font-medium">{dayjs(`${row.month}-01`).format('YYYY. MM.')}</td>
+                                <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatMoney(row.netWorth)}</td>
+                                <td className={`px-4 py-3 text-right font-semibold tabular-nums ${changeClass}`}>
+                                  {row.growthRate == null ? '-' : `${row.growthRate.toFixed(2)}%`}
+                                </td>
+                                <td className={`px-4 py-3 text-right font-semibold tabular-nums ${changeClass}`}>
+                                  {row.increase == null ? '-' : formatMoney(row.increase)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
