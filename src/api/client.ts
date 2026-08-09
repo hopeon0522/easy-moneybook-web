@@ -41,7 +41,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.3.3';
+const backupAppVersion = '0.3.4';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {

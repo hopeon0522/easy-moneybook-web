@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.3.3';
+const appVersion = 'v0.3.4';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -232,6 +232,7 @@ export default function App() {
   const [categoryMode, setCategoryMode] = useState<'expense' | 'income'>('expense');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [netWorthMode, setNetWorthMode] = useState<'monthly' | 'yearly'>('monthly');
+  const [annualTableExpanded, setAnnualTableExpanded] = useState(false);
   const [pensionChartMode, setPensionChartMode] = useState<'savings' | 'retirement'>('savings');
   const [hiddenAssetsCollapsed, setHiddenAssetsCollapsed] = useState(true);
   const [dashboardPieActiveIndex, setDashboardPieActiveIndex] = useState<number | undefined>();
@@ -603,13 +604,23 @@ export default function App() {
                 </div>
                 {netWorthMode === 'yearly' && annualNetWorthSummary.length > 0 && (
                   <div className="-mx-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                       <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">연도별 순자산 증감</h3>
-                      <span className="text-[11px] text-zinc-400">각 연도의 마지막 업데이트 월 기준</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] text-zinc-400">각 연도의 마지막 업데이트 월 기준</span>
+                        {annualNetWorthSummary.length > 5 && (
+                          <button
+                            className="rounded-md border border-zinc-200 px-2.5 py-1 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            onClick={() => setAnnualTableExpanded((current) => !current)}
+                          >
+                            {annualTableExpanded ? '접기' : '전체 보기'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className={annualTableExpanded ? 'overflow-x-auto' : 'max-h-[264px] overflow-auto'}>
                       <table className="w-full min-w-[620px] text-sm">
-                        <thead className="bg-zinc-50 text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+                        <thead className="sticky top-0 z-[1] bg-zinc-50 text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
                           <tr>
                             <th className="px-4 py-3 text-left">기준 시점</th>
                             <th className="px-4 py-3 text-right">기말 순자산</th>
@@ -618,7 +629,7 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {annualNetWorthSummary.map((row) => {
+                          {[...annualNetWorthSummary].reverse().map((row) => {
                             const changeClass = row.increase == null ? 'text-zinc-400' : row.increase >= 0 ? 'text-[#18a667]' : 'text-[#ff5a52]';
                             return (
                               <tr key={row.month} className="border-t border-zinc-100 dark:border-zinc-800">
