@@ -24,14 +24,14 @@ import { useAsync } from './hooks/useAsync';
 import { AppSettings, AssetKind, ManualNetWorthPoint, PensionSavingsData } from './types/domain';
 import { formatMoney } from './utils/format';
 
-const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '설정'] as const;
+const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
 const pieColors = ['#ff625a', '#ff944d', '#ffd23f', '#bde93f', '#64cf6b', '#5fded0', '#58a7f7', '#8b8cf6', '#c17bff', '#ff78a8'];
 const incomeColor = '#2f8cff';
 const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.3.4';
+const appVersion = 'v0.4.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -113,6 +113,13 @@ function monthToTime(period: string) {
 
 function formatChartYear(value: number | string) {
   return dayjs(Number(value)).format('YY/MM');
+}
+
+function formatCompactMoney(value: number) {
+  const absolute = Math.abs(value);
+  if (absolute >= 100_000_000) return `${(value / 100_000_000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}억`;
+  if (absolute >= 10_000) return `${Math.round(value / 10_000).toLocaleString('ko-KR')}만`;
+  return Math.round(value).toLocaleString('ko-KR');
 }
 
 function gridMonthTicks(rows: Array<{ xValue: number }>, intervalMonths: number) {
@@ -946,6 +953,13 @@ export default function App() {
             </section>
           )}
 
+          {tab === '자산추정' && (
+            <AssetProjection
+              latestNetWorth={dashboard.data?.summary.netWorth ?? 0}
+              latestPeriod={dashboard.data?.summary.latestPeriod ?? ''}
+            />
+          )}
+
           {tab === '설정' && (
             <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="mb-3 text-sm font-semibold">설정</h2>
@@ -961,6 +975,150 @@ export default function App() {
           {(dashboard.loading || transactions.loading || calendarTransactions.loading) && <div className="mt-4 text-sm text-zinc-500">불러오는 중...</div>}
         </main>
       </div>
+    </div>
+  );
+}
+
+function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: number; latestPeriod: string }) {
+  const [baseValue, setBaseValue] = useState('');
+  const [baseEdited, setBaseEdited] = useState(false);
+  const [annualRate, setAnnualRate] = useState('10');
+  const [years, setYears] = useState('10');
+
+  useEffect(() => {
+    if (!baseEdited) setBaseValue(String(Math.round(latestNetWorth || 0)));
+  }, [baseEdited, latestNetWorth]);
+
+  const base = Number(baseValue || 0);
+  const safeRate = Math.max(-99, Math.min(100, Number(annualRate || 0)));
+  const safeYears = Math.max(1, Math.min(30, Math.round(Number(years || 10))));
+  const projectionRows = useMemo(
+    () =>
+      Array.from({ length: safeYears + 1 }, (_, year) => ({
+        year,
+        amount: Math.round(base * (1 + safeRate / 100) ** year)
+      })),
+    [base, safeRate, safeYears]
+  );
+  const tableYears = Array.from({ length: Math.min(safeYears, 10) }, (_, index) => index + 1);
+  const roundedRate = Math.round(safeRate);
+  const scenarioRates = [...new Set([...Array.from({ length: 16 }, (_, index) => index + 5), roundedRate])].sort((a, b) => a - b);
+  const finalAmount = projectionRows[projectionRows.length - 1]?.amount ?? base;
+  const increase = finalAmount - base;
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">순자산 예측</h2>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">연간 복리 증가율을 적용한 단순 추정값이며 실제 자산 계산에는 반영되지 않습니다.</p>
+          </div>
+          <button
+            className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            onClick={() => {
+              setBaseEdited(false);
+              setBaseValue(String(Math.round(latestNetWorth || 0)));
+            }}
+          >
+            최근값 적용
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+            기준 순자산 {latestPeriod ? `(${latestPeriod})` : ''}
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
+                inputMode="numeric"
+                value={baseValue}
+                onChange={(event) => {
+                  setBaseEdited(true);
+                  setBaseValue(event.target.value.replace(/[^\d.-]/g, ''));
+                }}
+              />
+              <span className="shrink-0 text-xs text-zinc-500">원</span>
+            </div>
+          </label>
+          <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+            연 증가율
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
+                inputMode="decimal"
+                value={annualRate}
+                onChange={(event) => setAnnualRate(event.target.value.replace(/[^\d.-]/g, ''))}
+              />
+              <span className="shrink-0 text-xs text-zinc-500">%</span>
+            </div>
+          </label>
+          <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+            예측 기간
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
+                inputMode="numeric"
+                value={years}
+                onChange={(event) => setYears(event.target.value.replace(/\D/g, '').slice(0, 2))}
+              />
+              <span className="shrink-0 text-xs text-zinc-500">년</span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold">예상 순자산 변화</h2>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+            <span className="text-zinc-500">{safeYears}년 후 <strong className="ml-1 text-[#18a667]">{formatMoney(finalAmount)}</strong></span>
+            <span className="text-zinc-500">증가액 <strong className={`ml-1 ${increase >= 0 ? 'text-[#18a667]' : 'text-[#ff5a52]'}`}>{formatMoney(increase)}</strong></span>
+          </div>
+        </div>
+        <div className="h-80">
+          <ResponsiveContainer>
+            <LineChart data={projectionRows} margin={{ top: 10, right: 12, bottom: 0, left: 6 }}>
+              <CartesianGrid stroke="#e4e4e7" vertical={false} strokeDasharray="4 7" />
+              <XAxis dataKey="year" axisLine={false} tickLine={false} tickFormatter={(value) => (Number(value) === 0 ? '현재' : `${value}년`)} tick={{ fontSize: 11, fill: '#8b8b91' }} />
+              <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => formatCompactMoney(Number(value))} tick={{ fontSize: 10, fill: '#8b8b91' }} width={62} />
+              <Tooltip labelFormatter={(label) => (Number(label) === 0 ? '현재' : `${label}년 후`)} formatter={(value) => [formatMoney(Number(value)), '예상 순자산']} />
+              <Line type="monotone" dataKey="amount" name="예상 순자산" stroke={netWorthColor} strokeWidth={3} dot={{ r: 3, fill: netWorthColor }} activeDot={{ r: 7 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+          <h2 className="text-sm font-semibold">증가율별 예상 순자산</h2>
+          <span className="text-[11px] text-zinc-400">연 5~20% · 최대 10년 복리 기준</span>
+        </div>
+        <div className="overflow-auto">
+          <table className="min-w-[1080px] w-full text-sm">
+            <thead className="bg-zinc-50 text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+              <tr>
+                <th className="sticky left-0 z-[2] bg-zinc-50 px-3 py-3 text-right dark:bg-zinc-950">증가율</th>
+                {tableYears.map((year) => <th key={year} className="px-3 py-3 text-right">{year}년 후</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {scenarioRates.map((rate) => {
+                const selected = rate === roundedRate;
+                return (
+                  <tr key={rate} className={`border-t border-zinc-100 dark:border-zinc-800 ${selected ? 'bg-emerald-50/80 dark:bg-emerald-950/20' : ''}`}>
+                    <td className={`sticky left-0 px-3 py-2.5 text-right font-semibold ${selected ? 'bg-emerald-50 text-[#18a667] dark:bg-emerald-950 dark:text-emerald-300' : 'bg-white dark:bg-zinc-900'}`}>{rate}%</td>
+                    {tableYears.map((year) => (
+                      <td key={year} className={`px-3 py-2.5 text-right tabular-nums ${selected ? 'font-semibold text-[#18a667] dark:text-emerald-300' : ''}`}>
+                        {formatMoney(base * (1 + rate / 100) ** year)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
