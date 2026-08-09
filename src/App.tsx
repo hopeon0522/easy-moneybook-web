@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.6';
+const appVersion = 'v0.4.7';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1029,6 +1029,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
   const [minimumYear, setMinimumYear] = useState('1');
   const [maximumYear, setMaximumYear] = useState('10');
   const [yearInterval, setYearInterval] = useState('1');
+  const [rateRangeError, setRateRangeError] = useState('');
 
   useEffect(() => {
     if (!baseEdited) setBaseValue(String(Math.round(latestNetWorth || 0)));
@@ -1042,7 +1043,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
   const safeMaximumYear = Math.max(1, Math.min(30, Math.round(Number(maximumYear || 10))));
   const safeYearInterval = Math.max(1, Math.round(Math.abs(Number(yearInterval || 1))));
   const scenarioRates = useMemo(
-    () => buildProjectionRange(safeMinimumRate, safeMaximumRate, safeRateInterval, 30, 1),
+    () => buildProjectionRange(safeMinimumRate, safeMaximumRate, safeRateInterval, 20, 1),
     [safeMaximumRate, safeMinimumRate, safeRateInterval]
   );
   const forecastYears = useMemo(
@@ -1054,6 +1055,29 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
     [scenarioRates]
   );
   const baseYear = latestPeriod ? Number(latestPeriod.slice(0, 4)) : dayjs().year();
+
+  const updateRateRange = (field: 'minimum' | 'maximum' | 'interval', rawValue: string) => {
+    const cleaned = rawValue.replace(/[^\d.-]/g, '');
+    const nextMinimum = field === 'minimum' ? cleaned : minimumRate;
+    const nextMaximum = field === 'maximum' ? cleaned : maximumRate;
+    const nextInterval = field === 'interval' ? cleaned : rateInterval;
+    const minimum = Number(nextMinimum);
+    const maximum = Number(nextMaximum);
+    const interval = Math.abs(Number(nextInterval));
+
+    if (nextMinimum && nextMaximum && nextInterval && Number.isFinite(minimum) && Number.isFinite(maximum) && interval > 0) {
+      const scenarioCount = Math.floor(Math.abs(maximum - minimum) / interval + 0.000001) + 1;
+      if (scenarioCount > 20) {
+        setRateRangeError('증가율은 최대 20개까지만 표시할 수 있습니다. 범위나 간격을 조정해주세요.');
+        return;
+      }
+    }
+
+    setRateRangeError('');
+    if (field === 'minimum') setMinimumRate(cleaned);
+    if (field === 'maximum') setMaximumRate(cleaned);
+    if (field === 'interval') setRateInterval(cleaned);
+  };
 
   return (
     <div className="space-y-5">
@@ -1095,10 +1119,10 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
             <legend className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">연 증가율</legend>
             <div className="mt-1 grid grid-cols-3 gap-2">
               {[
-                ['최소', minimumRate, setMinimumRate],
-                ['최대', maximumRate, setMaximumRate],
-                ['간격', rateInterval, setRateInterval]
-              ].map(([label, value, setter]) => (
+                ['최소', minimumRate, 'minimum'],
+                ['최대', maximumRate, 'maximum'],
+                ['간격', rateInterval, 'interval']
+              ].map(([label, value, field]) => (
                 <label key={String(label)} className="text-[11px] font-medium text-zinc-400">
                   {String(label)}
                   <div className="mt-1 flex items-center gap-1">
@@ -1106,13 +1130,16 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
                       className="min-w-0 w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
                       inputMode="decimal"
                       value={String(value)}
-                      onChange={(event) => (setter as (value: string) => void)(event.target.value.replace(/[^\d.-]/g, ''))}
+                      onChange={(event) => updateRateRange(field as 'minimum' | 'maximum' | 'interval', event.target.value)}
                     />
                     <span className="text-xs text-zinc-500">%</span>
                   </div>
                 </label>
               ))}
             </div>
+            <p className={`mt-1.5 min-h-4 text-[10px] ${rateRangeError ? 'text-[#ff5a52]' : 'text-zinc-400'}`}>
+              {rateRangeError || `현재 ${scenarioRates.length}개 · 최대 20개`}
+            </p>
           </fieldset>
           <fieldset className="border-t border-zinc-100 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-zinc-800">
             <legend className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">예측 기간</legend>
@@ -1145,14 +1172,18 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
           <h2 className="text-sm font-semibold">순자산 예측표</h2>
           <span className="text-[11px] text-zinc-400">셀에 마우스를 올리면 원 단위 전체 금액을 확인할 수 있습니다.</span>
         </div>
-        <div className="overflow-auto">
-          <table className="min-w-[1480px] w-full text-sm">
-            <thead className="bg-zinc-50 text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+        <div className="w-full overflow-hidden">
+          <table className="w-full table-fixed text-[7px] leading-tight sm:text-[9px] lg:text-[11px]">
+            <colgroup>
+              <col className="w-16 sm:w-20 lg:w-28" />
+              {scenarios.map(({ rate }) => <col key={rate} />)}
+            </colgroup>
+            <thead className="bg-zinc-50 font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
               <tr>
-                <th className="sticky left-0 z-[2] bg-zinc-50 px-3 py-3 text-left dark:bg-zinc-950">예측 시점</th>
+                <th className="bg-zinc-50 px-1 py-3 text-left sm:px-2 dark:bg-zinc-950">예측 시점</th>
                 {scenarios.map(({ rate, color }) => (
-                  <th key={rate} className="px-3 py-3 text-right">
-                    <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ backgroundColor: color }} />
+                  <th key={rate} className="px-0.5 py-3 text-center">
+                    <span className="mx-auto mb-1 block h-1.5 w-1.5 rounded-sm lg:h-2 lg:w-2" style={{ backgroundColor: color }} />
                     {rate}%
                   </th>
                 ))}
@@ -1161,15 +1192,17 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
             <tbody>
               {forecastYears.map((year) => (
                 <tr key={year} className="border-t border-zinc-100 dark:border-zinc-800">
-                  <td className="sticky left-0 bg-white px-3 py-2.5 font-semibold dark:bg-zinc-900">
-                    {year}년 후 <span className="ml-1 text-xs font-normal text-zinc-400">({baseYear + year})</span>
+                  <td className="bg-white px-1 py-2.5 font-semibold sm:px-2 dark:bg-zinc-900">
+                    <span className="block">{year}년 후</span>
+                    <span className="mt-0.5 block font-normal text-zinc-400">{baseYear + year}</span>
                   </td>
                   {scenarios.map(({ rate }) => {
                     const amount = base * (1 + rate / 100) ** year;
-                    const fullAmount = `${formatMoney(amount)} · ${formatKoreanMoney(amount)}`;
+                    const compactAmount = formatTruncatedBillions(amount).slice(0, -1);
+                    const fullAmount = formatKoreanMoney(amount);
                     return (
-                      <td key={rate} className="cursor-help px-3 py-2.5 text-right font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
-                        {formatTruncatedBillions(amount)}
+                      <td key={rate} className="px-0.5 py-2.5 text-center font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
+                        <span>{compactAmount}</span><span className="block sm:inline">억</span>
                       </td>
                     );
                   })}
