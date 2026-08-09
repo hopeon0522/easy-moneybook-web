@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.7';
+const appVersion = 'v0.4.8';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1173,7 +1173,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
           <span className="text-[11px] text-zinc-400">셀에 마우스를 올리면 원 단위 전체 금액을 확인할 수 있습니다.</span>
         </div>
         <div className="w-full overflow-hidden">
-          <table className="w-full table-fixed text-[7px] leading-tight sm:text-[9px] lg:text-[11px]">
+          <table className="w-full table-fixed text-[9px] leading-tight [letter-spacing:0] sm:text-[11px] lg:text-[13px]">
             <colgroup>
               <col className="w-16 sm:w-20 lg:w-28" />
               {scenarios.map(({ rate }) => <col key={rate} />)}
@@ -1182,7 +1182,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
               <tr>
                 <th className="bg-zinc-50 px-1 py-3 text-left sm:px-2 dark:bg-zinc-950">예측 시점</th>
                 {scenarios.map(({ rate, color }) => (
-                  <th key={rate} className="px-0.5 py-3 text-center">
+                  <th key={rate} className="overflow-hidden px-0.5 py-3 text-center">
                     <span className="mx-auto mb-1 block h-1.5 w-1.5 rounded-sm lg:h-2 lg:w-2" style={{ backgroundColor: color }} />
                     {rate}%
                   </th>
@@ -1201,7 +1201,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
                     const compactAmount = formatTruncatedBillions(amount).slice(0, -1);
                     const fullAmount = formatKoreanMoney(amount);
                     return (
-                      <td key={rate} className="px-0.5 py-2.5 text-center font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
+                      <td key={rate} className="overflow-hidden px-0.5 py-2.5 text-center font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
                         <span>{compactAmount}</span><span className="block sm:inline">억</span>
                       </td>
                     );
