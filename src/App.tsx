@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -31,7 +32,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.4.0';
+const appVersion = 'v0.4.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -120,6 +121,25 @@ function formatCompactMoney(value: number) {
   if (absolute >= 100_000_000) return `${(value / 100_000_000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}억`;
   if (absolute >= 10_000) return `${Math.round(value / 10_000).toLocaleString('ko-KR')}만`;
   return Math.round(value).toLocaleString('ko-KR');
+}
+
+function buildProjectionRange(minimum: number, maximum: number, interval: number, limit: number, decimals = 0) {
+  const min = Math.min(minimum, maximum);
+  const max = Math.max(minimum, maximum);
+  const step = Math.max(interval, decimals ? 0.1 : 1);
+  const factor = 10 ** decimals;
+  const values: number[] = [];
+
+  for (let value = min; value <= max + step / 1000 && values.length < limit; value += step) {
+    values.push(Math.round(value * factor) / factor);
+  }
+
+  return values;
+}
+
+function projectionColor(index: number, total: number) {
+  const hue = total <= 1 ? 153 : 3 + (index * 220) / Math.max(total - 1, 1);
+  return `hsl(${hue} 72% 52%)`;
 }
 
 function gridMonthTicks(rows: Array<{ xValue: number }>, intervalMonths: number) {
@@ -982,29 +1002,52 @@ export default function App() {
 function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: number; latestPeriod: string }) {
   const [baseValue, setBaseValue] = useState('');
   const [baseEdited, setBaseEdited] = useState(false);
-  const [annualRate, setAnnualRate] = useState('10');
-  const [years, setYears] = useState('10');
+  const [minimumRate, setMinimumRate] = useState('5');
+  const [maximumRate, setMaximumRate] = useState('20');
+  const [rateInterval, setRateInterval] = useState('5');
+  const [minimumYear, setMinimumYear] = useState('1');
+  const [maximumYear, setMaximumYear] = useState('10');
+  const [yearInterval, setYearInterval] = useState('1');
 
   useEffect(() => {
     if (!baseEdited) setBaseValue(String(Math.round(latestNetWorth || 0)));
   }, [baseEdited, latestNetWorth]);
 
   const base = Number(baseValue || 0);
-  const safeRate = Math.max(-99, Math.min(100, Number(annualRate || 0)));
-  const safeYears = Math.max(1, Math.min(30, Math.round(Number(years || 10))));
+  const safeMinimumRate = Math.max(-90, Math.min(100, Number(minimumRate || 0)));
+  const safeMaximumRate = Math.max(-90, Math.min(100, Number(maximumRate || 0)));
+  const safeRateInterval = Math.max(0.1, Math.abs(Number(rateInterval || 1)));
+  const safeMinimumYear = Math.max(1, Math.min(30, Math.round(Number(minimumYear || 1))));
+  const safeMaximumYear = Math.max(1, Math.min(30, Math.round(Number(maximumYear || 10))));
+  const safeYearInterval = Math.max(1, Math.round(Math.abs(Number(yearInterval || 1))));
+  const scenarioRates = useMemo(
+    () => buildProjectionRange(safeMinimumRate, safeMaximumRate, safeRateInterval, 30, 1),
+    [safeMaximumRate, safeMinimumRate, safeRateInterval]
+  );
+  const forecastYears = useMemo(
+    () => buildProjectionRange(safeMinimumYear, safeMaximumYear, safeYearInterval, 30),
+    [safeMaximumYear, safeMinimumYear, safeYearInterval]
+  );
+  const scenarios = useMemo(
+    () => scenarioRates.map((rate, index) => ({ rate, key: `scenario_${index}`, color: projectionColor(index, scenarioRates.length) })),
+    [scenarioRates]
+  );
   const projectionRows = useMemo(
     () =>
-      Array.from({ length: safeYears + 1 }, (_, year) => ({
-        year,
-        amount: Math.round(base * (1 + safeRate / 100) ** year)
-      })),
-    [base, safeRate, safeYears]
+      [0, ...forecastYears].map((year) => {
+        const row: Record<string, number> = { year };
+        scenarios.forEach(({ rate, key }) => {
+          row[key] = Math.round(base * (1 + rate / 100) ** year);
+        });
+        return row;
+      }),
+    [base, forecastYears, scenarios]
   );
-  const tableYears = Array.from({ length: Math.min(safeYears, 10) }, (_, index) => index + 1);
-  const roundedRate = Math.round(safeRate);
-  const scenarioRates = [...new Set([...Array.from({ length: 16 }, (_, index) => index + 5), roundedRate])].sort((a, b) => a - b);
-  const finalAmount = projectionRows[projectionRows.length - 1]?.amount ?? base;
-  const increase = finalAmount - base;
+  const finalYear = forecastYears[forecastYears.length - 1] ?? 1;
+  const finalAmounts = scenarios.map(({ rate }) => Math.round(base * (1 + rate / 100) ** finalYear));
+  const finalMinimum = Math.min(...finalAmounts);
+  const finalMaximum = Math.max(...finalAmounts);
+  const baseYear = latestPeriod ? Number(latestPeriod.slice(0, 4)) : dayjs().year();
 
   return (
     <div className="space-y-5">
@@ -1024,7 +1067,7 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
             최근값 적용
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_2fr_2fr]">
           <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
             기준 순자산 {latestPeriod ? `(${latestPeriod})` : ''}
             <div className="mt-1 flex items-center gap-2">
@@ -1040,30 +1083,52 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
               <span className="shrink-0 text-xs text-zinc-500">원</span>
             </div>
           </label>
-          <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-            연 증가율
-            <div className="mt-1 flex items-center gap-2">
-              <input
-                className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
-                inputMode="decimal"
-                value={annualRate}
-                onChange={(event) => setAnnualRate(event.target.value.replace(/[^\d.-]/g, ''))}
-              />
-              <span className="shrink-0 text-xs text-zinc-500">%</span>
+          <fieldset className="border-t border-zinc-100 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-zinc-800">
+            <legend className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">연 증가율</legend>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {[
+                ['최소', minimumRate, setMinimumRate],
+                ['최대', maximumRate, setMaximumRate],
+                ['간격', rateInterval, setRateInterval]
+              ].map(([label, value, setter]) => (
+                <label key={String(label)} className="text-[11px] font-medium text-zinc-400">
+                  {String(label)}
+                  <div className="mt-1 flex items-center gap-1">
+                    <input
+                      className="min-w-0 w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
+                      inputMode="decimal"
+                      value={String(value)}
+                      onChange={(event) => (setter as (value: string) => void)(event.target.value.replace(/[^\d.-]/g, ''))}
+                    />
+                    <span className="text-xs text-zinc-500">%</span>
+                  </div>
+                </label>
+              ))}
             </div>
-          </label>
-          <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-            예측 기간
-            <div className="mt-1 flex items-center gap-2">
-              <input
-                className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
-                inputMode="numeric"
-                value={years}
-                onChange={(event) => setYears(event.target.value.replace(/\D/g, '').slice(0, 2))}
-              />
-              <span className="shrink-0 text-xs text-zinc-500">년</span>
+          </fieldset>
+          <fieldset className="border-t border-zinc-100 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-zinc-800">
+            <legend className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">예측 기간</legend>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {[
+                ['최소', minimumYear, setMinimumYear],
+                ['최대', maximumYear, setMaximumYear],
+                ['간격', yearInterval, setYearInterval]
+              ].map(([label, value, setter]) => (
+                <label key={String(label)} className="text-[11px] font-medium text-zinc-400">
+                  {String(label)}
+                  <div className="mt-1 flex items-center gap-1">
+                    <input
+                      className="min-w-0 w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-right text-sm font-semibold tabular-nums dark:border-zinc-700 dark:bg-zinc-950"
+                      inputMode="numeric"
+                      value={String(value)}
+                      onChange={(event) => (setter as (value: string) => void)(event.target.value.replace(/\D/g, '').slice(0, 2))}
+                    />
+                    <span className="text-xs text-zinc-500">년</span>
+                  </div>
+                </label>
+              ))}
             </div>
-          </label>
+          </fieldset>
         </div>
       </section>
 
@@ -1071,18 +1136,21 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <h2 className="text-sm font-semibold">예상 순자산 변화</h2>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-            <span className="text-zinc-500">{safeYears}년 후 <strong className="ml-1 text-[#18a667]">{formatMoney(finalAmount)}</strong></span>
-            <span className="text-zinc-500">증가액 <strong className={`ml-1 ${increase >= 0 ? 'text-[#18a667]' : 'text-[#ff5a52]'}`}>{formatMoney(increase)}</strong></span>
+            <span className="text-zinc-500">{scenarios.length}개 증가율 시나리오</span>
+            <span className="text-zinc-500">{finalYear}년 후 <strong className="ml-1 text-[#18a667]">{formatMoney(finalMinimum)} ~ {formatMoney(finalMaximum)}</strong></span>
           </div>
         </div>
         <div className="h-80">
           <ResponsiveContainer>
             <LineChart data={projectionRows} margin={{ top: 10, right: 12, bottom: 0, left: 6 }}>
               <CartesianGrid stroke="#e4e4e7" vertical={false} strokeDasharray="4 7" />
-              <XAxis dataKey="year" axisLine={false} tickLine={false} tickFormatter={(value) => (Number(value) === 0 ? '현재' : `${value}년`)} tick={{ fontSize: 11, fill: '#8b8b91' }} />
+              <XAxis dataKey="year" type="number" domain={[0, finalYear]} ticks={[0, ...forecastYears]} axisLine={false} tickLine={false} tickFormatter={(value) => (Number(value) === 0 ? '현재' : `${value}년`)} tick={{ fontSize: 11, fill: '#8b8b91' }} />
               <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => formatCompactMoney(Number(value))} tick={{ fontSize: 10, fill: '#8b8b91' }} width={62} />
-              <Tooltip labelFormatter={(label) => (Number(label) === 0 ? '현재' : `${label}년 후`)} formatter={(value) => [formatMoney(Number(value)), '예상 순자산']} />
-              <Line type="monotone" dataKey="amount" name="예상 순자산" stroke={netWorthColor} strokeWidth={3} dot={{ r: 3, fill: netWorthColor }} activeDot={{ r: 7 }} />
+              <Tooltip labelFormatter={(label) => (Number(label) === 0 ? '현재' : `${label}년 후 (${baseYear + Number(label)})`)} formatter={(value, name) => [formatMoney(Number(value)), name]} />
+              <Legend iconType="line" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              {scenarios.map(({ rate, key, color }) => (
+                <Line key={key} type="monotone" dataKey={key} name={`${rate}%`} stroke={color} strokeWidth={2.5} dot={{ r: 2.5, fill: color, stroke: color }} activeDot={{ r: 6, fill: color, stroke: '#fff', strokeWidth: 2 }} />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -1091,24 +1159,26 @@ function AssetProjection({ latestNetWorth, latestPeriod }: { latestNetWorth: num
       <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <h2 className="text-sm font-semibold">증가율별 예상 순자산</h2>
-          <span className="text-[11px] text-zinc-400">연 5~20% · 최대 10년 복리 기준</span>
+          <span className="text-[11px] text-zinc-400">연 {scenarioRates[0]}~{scenarioRates[scenarioRates.length - 1]}% · {safeRateInterval}% 간격</span>
         </div>
         <div className="overflow-auto">
           <table className="min-w-[1080px] w-full text-sm">
             <thead className="bg-zinc-50 text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
               <tr>
                 <th className="sticky left-0 z-[2] bg-zinc-50 px-3 py-3 text-right dark:bg-zinc-950">증가율</th>
-                {tableYears.map((year) => <th key={year} className="px-3 py-3 text-right">{year}년 후</th>)}
+                {forecastYears.map((year) => <th key={year} className="px-3 py-3 text-right">{year}년 후 ({baseYear + year})</th>)}
               </tr>
             </thead>
             <tbody>
-              {scenarioRates.map((rate) => {
-                const selected = rate === roundedRate;
+              {scenarios.map(({ rate, color }) => {
                 return (
-                  <tr key={rate} className={`border-t border-zinc-100 dark:border-zinc-800 ${selected ? 'bg-emerald-50/80 dark:bg-emerald-950/20' : ''}`}>
-                    <td className={`sticky left-0 px-3 py-2.5 text-right font-semibold ${selected ? 'bg-emerald-50 text-[#18a667] dark:bg-emerald-950 dark:text-emerald-300' : 'bg-white dark:bg-zinc-900'}`}>{rate}%</td>
-                    {tableYears.map((year) => (
-                      <td key={year} className={`px-3 py-2.5 text-right tabular-nums ${selected ? 'font-semibold text-[#18a667] dark:text-emerald-300' : ''}`}>
+                  <tr key={rate} className="border-t border-zinc-100 dark:border-zinc-800">
+                    <td className="sticky left-0 bg-white px-3 py-2.5 text-right font-semibold dark:bg-zinc-900">
+                      <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ backgroundColor: color }} />
+                      {rate}%
+                    </td>
+                    {forecastYears.map((year) => (
+                      <td key={year} className="px-3 py-2.5 text-right tabular-nums">
                         {formatMoney(base * (1 + rate / 100) ** year)}
                       </td>
                     ))}
