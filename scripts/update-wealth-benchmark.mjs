@@ -1,9 +1,41 @@
 import fs from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import ExcelJS from 'exceljs';
 
 const boardUrl = 'https://mods.go.kr/board.es?mid=b80501010000&bid=215';
 const outputPath = new URL('../public/korea-net-worth-latest.json', import.meta.url);
 const requestHeaders = { 'user-agent': 'EasyMoneyBook-Web/0.5 (+https://github.com/hopeon0522/easy-moneybook-web)' };
+const forceProxy = process.env.FORCE_STATS_PROXY === '1';
+const execFileAsync = promisify(execFile);
+
+async function fetchOfficial(url) {
+  if (!forceProxy) {
+    try {
+      const direct = await fetch(url, { headers: requestHeaders, signal: AbortSignal.timeout(15_000) });
+      if (direct.ok) return Buffer.from(await direct.arrayBuffer());
+      console.warn(`공식 사이트 직접 요청 실패(HTTP ${direct.status}), 중계 경로로 다시 시도합니다.`);
+    } catch (error) {
+      console.warn(`공식 사이트 직접 요청 실패(${error instanceof Error ? error.message : error}), 중계 경로로 다시 시도합니다.`);
+    }
+  }
+
+  const proxyUrls = ['https://corsproxy.io/', 'https://api.allorigins.win/raw'];
+  for (const proxyUrl of proxyUrls) {
+    try {
+      const { stdout } = await execFileAsync(
+        'curl',
+        ['-fsSL', '--get', '--data-urlencode', `url=${url}`, proxyUrl],
+        { encoding: 'buffer', maxBuffer: 20 * 1024 * 1024, timeout: 60_000 }
+      );
+      if (stdout.length) return stdout;
+      console.warn('공식 자료 중계 응답이 비어 있어 다음 경로로 다시 시도합니다.');
+    } catch (error) {
+      console.warn(`공식 자료 중계 요청 실패(${error instanceof Error ? error.message : error}), 다음 경로로 다시 시도합니다.`);
+    }
+  }
+  throw new Error('공식 자료를 직접 또는 중계 경로로 불러오지 못했습니다.');
+}
 
 function text(value) {
   if (value == null) return '';
@@ -17,9 +49,7 @@ function number(value, label) {
   return parsed;
 }
 
-const boardResponse = await fetch(boardUrl, { headers: requestHeaders });
-if (!boardResponse.ok) throw new Error(`국가데이터처 게시판 조회 실패: HTTP ${boardResponse.status}`);
-const boardHtml = await boardResponse.text();
+const boardHtml = (await fetchOfficial(boardUrl)).toString('utf8');
 const entries = boardHtml
   .split('<a class="board_link"')
   .map((block) => {
@@ -36,11 +66,10 @@ const latest = entries[0];
 if (!latest) throw new Error('최신 가계금융복지조사 XLSX 첨부파일을 찾지 못했습니다.');
 
 const xlsxUrl = new URL(latest.xlsxPath.replaceAll('&amp;', '&'), boardUrl);
-const xlsxResponse = await fetch(xlsxUrl, { headers: requestHeaders });
-if (!xlsxResponse.ok) throw new Error(`공식 XLSX 다운로드 실패: HTTP ${xlsxResponse.status}`);
+const xlsxBuffer = await fetchOfficial(xlsxUrl);
 
 const workbook = new ExcelJS.Workbook();
-await workbook.xlsx.load(Buffer.from(await xlsxResponse.arrayBuffer()));
+await workbook.xlsx.load(xlsxBuffer);
 const sheet = workbook.worksheets.find((candidate) => {
   let matched = false;
   candidate.eachRow((row) => {
