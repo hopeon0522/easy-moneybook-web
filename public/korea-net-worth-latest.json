@@ -1,0 +1,48 @@
+{
+  "surveyYear": 2025,
+  "referenceDate": "2025-03-31",
+  "publishedAt": "2025-12-04",
+  "sourceCheckedAt": "2026-08-11T13:24:02.068Z",
+  "averageNetWorth": 471437032,
+  "medianNetWorth": 238600000,
+  "percentiles": [
+    {
+      "percentile": 10,
+      "amount": 12100000
+    },
+    {
+      "percentile": 20,
+      "amount": 51080000
+    },
+    {
+      "percentile": 30,
+      "amount": 102960000
+    },
+    {
+      "percentile": 40,
+      "amount": 164720000
+    },
+    {
+      "percentile": 50,
+      "amount": 238600000
+    },
+    {
+      "percentile": 60,
+      "amount": 330500000
+    },
+    {
+      "percentile": 70,
+      "amount": 461800000
+    },
+    {
+      "percentile": 80,
+      "amount": 693800000
+    },
+    {
+      "percentile": 90,
+      "amount": 1100200000
+    }
+  ],
+  "sourceName": "국가데이터처·한국은행·금융감독원 2025년 가계금융복지조사",
+  "sourceUrl": "https://mods.go.kr/board.es?act=view&bid=215&list_no=439535&mid=b80501010000"
+}

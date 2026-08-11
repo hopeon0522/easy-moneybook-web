@@ -92,6 +92,7 @@ export interface WealthBenchmark {
   surveyYear: number;
   referenceDate: string;
   publishedAt: string;
+  sourceCheckedAt?: string;
   refreshedAt: string;
   averageNetWorth: number;
   medianNetWorth: number;

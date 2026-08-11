@@ -42,7 +42,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.5.0';
+const backupAppVersion = '0.5.1';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -387,7 +387,7 @@ async function updateSettings(input: AppSettings): Promise<AppSettings> {
 }
 
 async function refreshWealthBenchmark(): Promise<WealthBenchmark> {
-  const response = await fetch(`${import.meta.env.BASE_URL}korea-net-worth-2025.json?t=${Date.now()}`, { cache: 'no-store' });
+  const response = await fetch(`${import.meta.env.BASE_URL}korea-net-worth-latest.json?t=${Date.now()}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('공식 순자산 통계 자료를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
   const raw = await response.json() as Omit<WealthBenchmark, 'refreshedAt'>;
   if (

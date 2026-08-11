@@ -31,7 +31,7 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.5.0';
+const appVersion = 'v0.5.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -185,6 +185,13 @@ function formatEstimatedTopPercent(value: number, benchmark: WealthBenchmark | n
   if (percent == null) return '백분율 산정 불가';
   if (percent < 1) return '추정 상위 1% 미만';
   return `추정 상위 ${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
+}
+
+function formatEstimatedPercentValue(value: number, benchmark: WealthBenchmark | null) {
+  const percent = estimatedTopPercent(value, benchmark);
+  if (percent == null) return '-';
+  if (percent < 1) return '1% 미만';
+  return `${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
 }
 
 function formatBenchmarkDifference(value: number, reference: number) {
@@ -1252,7 +1259,7 @@ function AssetProjection({
                     return (
                       <td key={rate} className="overflow-hidden px-0.5 py-2.5 text-center font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
                         <span>{compactAmount}</span><span className="block sm:inline">억</span>
-                        <span className="mt-1 block text-[8px] font-normal leading-none text-zinc-400 sm:text-[10px] lg:text-[12px]">{formatEstimatedTopPercent(amount, benchmark)}</span>
+                        <span className="mt-1 block text-[8px] font-normal leading-none text-zinc-400 sm:text-[10px] lg:text-[12px]">{formatEstimatedPercentValue(amount, benchmark)}</span>
                       </td>
                     );
                   })}
@@ -1870,13 +1877,14 @@ function SettingsForm({
               }
             }}
           >
-            {benchmarkRefreshing ? '갱신 중...' : '공식 통계 갱신'}
+            {benchmarkRefreshing ? '불러오는 중...' : '최신 공식 통계 불러오기'}
           </button>
         </div>
         {settings?.wealthBenchmark ? (
           <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
             <p>전국 평균 {formatKoreanMoney(settings.wealthBenchmark.averageNetWorth)} · 중앙값 {formatKoreanMoney(settings.wealthBenchmark.medianNetWorth)}</p>
             <p>{settings.wealthBenchmark.referenceDate} 기준 · {settings.wealthBenchmark.surveyYear}년 조사 · 발표 {settings.wealthBenchmark.publishedAt}</p>
+            {settings.wealthBenchmark.sourceCheckedAt && <p>공식 자료 확인 {dayjs(settings.wealthBenchmark.sourceCheckedAt).format('YYYY.MM.DD HH:mm:ss')}</p>}
             <p>마지막 갱신 {dayjs(settings.wealthBenchmark.refreshedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
             <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
           </div>

@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '17 21 * * *'
   workflow_dispatch:
 
 permissions:
@@ -25,7 +27,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 11.9.0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -36,10 +38,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Fetch latest official household wealth statistics
+        run: node scripts/update-wealth-benchmark.mjs
+
       - name: Build frontend
         run: pnpm exec vite build
 
-      - name: Upload Pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -51,6 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
