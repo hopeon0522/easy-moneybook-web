@@ -5,8 +5,10 @@ import {
   CategoryExpenseData,
   DashboardData,
   ImportFile,
+  MarketBenchmarkData,
   ManualNetWorthPoint,
   Metadata,
+  PensionPerformanceData,
   PensionSavingsData,
   Transaction,
   WealthBenchmark
@@ -42,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.5.1';
+const backupAppVersion = '0.6.0';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -52,6 +54,7 @@ const settingsDefaults: AppSettings = {
   chartGridYWon: 100_000_000,
   pensionChartGridXMonths: 12,
   pensionChartGridYWon: 10_000_000,
+  usIndexDollarBasis: false,
   wealthBenchmark: null
 };
 const pensionAssetName = '삼성증권연금저축';
@@ -209,6 +212,66 @@ async function retirementPension(): Promise<PensionSavingsData> {
   return { assetName: '퇴직연금', initialValue: 0, rows };
 }
 
+function chainedTwr(
+  rows: PensionSavingsData['rows'],
+  initialValue: number,
+  weightedFlows: Map<string, number>
+) {
+  let startValue = initialValue;
+  let growth = 1;
+  return [...rows].sort((a, b) => a.period.localeCompare(b.period)).map((row) => {
+    const endValue = startValue + row.principal + row.profit;
+    const denominator = startValue + (weightedFlows.get(row.period) ?? 0);
+    const monthlyReturn = denominator > 0 ? row.profit / denominator : 0;
+    if (Number.isFinite(monthlyReturn) && monthlyReturn > -1) growth *= 1 + monthlyReturn;
+    startValue = endValue;
+    return { month: row.period, twr: (growth - 1) * 100 };
+  });
+}
+
+async function pensionPerformance(): Promise<PensionPerformanceData> {
+  const [transactions, savings, retirement, data] = await Promise.all([
+    allTransactions(),
+    pensionSavings(),
+    retirementPension(),
+    localData()
+  ]);
+  const weightedSavingsFlows = new Map<string, number>();
+  const automaticPrincipal = new Map<string, number>();
+  for (const row of transactions.filter((item) => item.asset === pensionAssetName && item.type === 'transfer')) {
+    const period = row.date.slice(0, 7);
+    const date = dayjs(row.date.slice(0, 10));
+    const daysInMonth = date.daysInMonth();
+    const weight = Math.max(0, (daysInMonth - date.date()) / daysInMonth);
+    weightedSavingsFlows.set(period, (weightedSavingsFlows.get(period) ?? 0) + row.amount * weight);
+    automaticPrincipal.set(period, (automaticPrincipal.get(period) ?? 0) + row.amount);
+  }
+  for (const override of data.pension_overrides ?? []) {
+    const automaticTotal = automaticPrincipal.get(override.period) ?? 0;
+    if (automaticTotal) {
+      const automaticWeighted = weightedSavingsFlows.get(override.period) ?? 0;
+      weightedSavingsFlows.set(override.period, automaticWeighted * (override.principal / automaticTotal));
+    } else {
+      weightedSavingsFlows.set(override.period, 0);
+    }
+  }
+  const retirementMonthEndFlows = new Map(retirement.rows.map((row) => [row.period, 0]));
+  return {
+    savings: chainedTwr(savings.rows, savings.initialValue, weightedSavingsFlows),
+    retirement: chainedTwr(retirement.rows, retirement.initialValue, retirementMonthEndFlows)
+  };
+}
+
+async function marketBenchmarks(): Promise<MarketBenchmarkData> {
+  const response = await fetch(`${import.meta.env.BASE_URL}market-benchmarks.json?t=${Date.now()}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('시장 지수 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  const payload = await response.json() as MarketBenchmarkData;
+  if (!payload?.series?.kospi || !payload.series.nasdaq100 || !payload.series.sp500 || !payload.series.usdkrw) {
+    throw new Error('시장 지수 데이터의 형식이 올바르지 않습니다.');
+  }
+  return payload;
+}
+
 function mapTransaction(row: LocalData['transactions'][number]): Transaction {
   return {
     id: Number(row.id),
@@ -362,6 +425,7 @@ async function settings(): Promise<AppSettings> {
     chartGridYWon: Math.max(100_000_000, Number(values.chartGridYWon || settingsDefaults.chartGridYWon)),
     pensionChartGridXMonths: Math.max(1, Number(values.pensionChartGridXMonths || settingsDefaults.pensionChartGridXMonths)),
     pensionChartGridYWon: Math.max(10_000, Number(values.pensionChartGridYWon || settingsDefaults.pensionChartGridYWon)),
+    usIndexDollarBasis: values.usIndexDollarBasis === 'true',
     wealthBenchmark
   };
 }
@@ -374,7 +438,8 @@ async function updateSettings(input: AppSettings): Promise<AppSettings> {
     chartGridXMonths: Math.max(1, Math.round(Number(input.chartGridXMonths || 12))),
     chartGridYWon: Math.max(100_000_000, Math.round(Number(input.chartGridYWon || 100_000_000) / 100_000_000) * 100_000_000),
     pensionChartGridXMonths: Math.max(1, Math.round(Number(input.pensionChartGridXMonths || 12))),
-    pensionChartGridYWon: Math.max(10_000, Math.round(Number(input.pensionChartGridYWon || 10_000_000) / 10_000) * 10_000)
+    pensionChartGridYWon: Math.max(10_000, Math.round(Number(input.pensionChartGridYWon || 10_000_000) / 10_000) * 10_000),
+    usIndexDollarBasis: Boolean(input.usIndexDollarBasis)
   };
   const now = new Date().toISOString();
   for (const [key, value] of Object.entries(next)) {
@@ -512,6 +577,8 @@ export const api = {
   dashboard,
   pensionSavings,
   retirementPension,
+  pensionPerformance,
+  marketBenchmarks,
   updatePensionMonth: async (input: { period: string; principal: number; profit: number }) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
     if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('원금과 수익을 숫자로 입력해 주세요.');

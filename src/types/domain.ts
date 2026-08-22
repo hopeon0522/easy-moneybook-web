@@ -85,7 +85,21 @@ export interface AppSettings {
   chartGridYWon: number;
   pensionChartGridXMonths: number;
   pensionChartGridYWon: number;
+  usIndexDollarBasis: boolean;
   wealthBenchmark: WealthBenchmark | null;
+}
+
+export type MarketBenchmarkKey = 'kospi' | 'nasdaq100' | 'sp500';
+
+export interface MarketBenchmarkData {
+  updatedAt: string;
+  completedThrough: string;
+  series: Record<MarketBenchmarkKey | 'usdkrw', Array<{ month: string; date: string; value: number }>>;
+}
+
+export interface PensionPerformanceData {
+  savings: Array<{ month: string; twr: number }>;
+  retirement: Array<{ month: string; twr: number }>;
 }
 
 export interface WealthBenchmark {

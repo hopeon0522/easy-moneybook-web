@@ -41,6 +41,9 @@ jobs:
       - name: Fetch latest official household wealth statistics
         run: node scripts/update-wealth-benchmark.mjs
 
+      - name: Fetch month-end market benchmarks
+        run: node scripts/update-market-benchmarks.mjs
+
       - name: Build frontend
         run: pnpm exec vite build
 

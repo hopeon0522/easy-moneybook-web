@@ -21,7 +21,7 @@ import { StatCard } from './components/StatCard';
 import { TransactionTable } from './components/TransactionTable';
 import { UploadDropzone } from './components/UploadDropzone';
 import { useAsync } from './hooks/useAsync';
-import { AppSettings, AssetKind, ManualNetWorthPoint, PensionSavingsData, WealthBenchmark } from './types/domain';
+import { AppSettings, AssetKind, ManualNetWorthPoint, MarketBenchmarkData, MarketBenchmarkKey, PensionSavingsData, WealthBenchmark } from './types/domain';
 import { formatMoney } from './utils/format';
 
 const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
@@ -31,7 +31,8 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const appVersion = 'v0.5.1';
+const benchmarkColor = '#7c6ee6';
+const appVersion = 'v0.6.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -40,6 +41,11 @@ const assetKindLabels: Record<AssetKind, string> = {
   checkCard: '체크카드',
   loan: '대출',
   other: '기타'
+};
+const marketBenchmarkLabels: Record<MarketBenchmarkKey, string> = {
+  kospi: '코스피',
+  nasdaq100: '나스닥100',
+  sp500: 'S&P500'
 };
 const koreanHolidays: Record<string, string> = {
   '2025-01-01': '신정',
@@ -161,6 +167,34 @@ function buildProjectionRange(minimum: number, maximum: number, interval: number
 
 function projectionColor(index: number) {
   return pieColors[index % pieColors.length];
+}
+
+function pensionComparisonRows(
+  performance: Array<{ month: string; twr: number }>,
+  market: MarketBenchmarkData | null | undefined,
+  benchmark: MarketBenchmarkKey,
+  dollarBasis: boolean
+) {
+  if (!market) return [];
+  const performanceByMonth = new Map(performance.map((row) => [row.month, row.twr]));
+  const fxByMonth = new Map(market.series.usdkrw.map((row) => [row.month, row.value]));
+  const joined = market.series[benchmark]
+    .filter((row) => performanceByMonth.has(row.month) && row.month <= market.completedThrough)
+    .map((row) => {
+      const fx = fxByMonth.get(row.month);
+      const marketValue = benchmark === 'kospi' || dollarBasis ? row.value : fx ? row.value * fx : null;
+      return marketValue == null ? null : { month: row.month, date: row.date, pensionRaw: performanceByMonth.get(row.month) ?? 0, marketValue };
+    })
+    .filter((row): row is NonNullable<typeof row> => row != null);
+  const first = joined[0];
+  if (!first) return [];
+  const pensionBase = 1 + first.pensionRaw / 100;
+  return joined.map((row) => ({
+    ...row,
+    xValue: monthToTime(row.month),
+    pensionReturn: pensionBase > 0 ? ((1 + row.pensionRaw / 100) / pensionBase - 1) * 100 : 0,
+    benchmarkReturn: (row.marketValue / first.marketValue - 1) * 100
+  }));
 }
 
 function estimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
@@ -318,6 +352,8 @@ export default function App() {
   const [netWorthMode, setNetWorthMode] = useState<'monthly' | 'yearly'>('monthly');
   const [annualTableExpanded, setAnnualTableExpanded] = useState(false);
   const [pensionChartMode, setPensionChartMode] = useState<'savings' | 'retirement'>('savings');
+  const [pensionChartView, setPensionChartView] = useState<'assets' | 'comparison'>('assets');
+  const [pensionBenchmark, setPensionBenchmark] = useState<MarketBenchmarkKey>('kospi');
   const [hiddenAssetsCollapsed, setHiddenAssetsCollapsed] = useState(true);
   const [dashboardPieActiveIndex, setDashboardPieActiveIndex] = useState<number | undefined>();
   const [categoryPieActiveIndex, setCategoryPieActiveIndex] = useState<number | undefined>();
@@ -339,6 +375,8 @@ export default function App() {
   const manualNetWorth = useAsync(api.manualNetWorth, []);
   const pensionSavings = useAsync(api.pensionSavings, []);
   const retirementPension = useAsync(api.retirementPension, []);
+  const pensionPerformance = useAsync(api.pensionPerformance, []);
+  const marketBenchmarks = useAsync(api.marketBenchmarks, []);
   const effectivePeriod = selectedPeriod || dashboard.data?.summary.latestPeriod || periods.data?.[0] || '';
   const categoryExpense = useAsync(() => api.categoryExpense(effectivePeriod, categoryMode), [categoryMode, effectivePeriod]);
 
@@ -380,6 +418,8 @@ export default function App() {
       manualNetWorth.reload(),
       pensionSavings.reload(),
       retirementPension.reload(),
+      pensionPerformance.reload(),
+      marketBenchmarks.reload(),
       categoryExpense.reload(),
       transactions.reload(),
       calendarTransactions.reload(),
@@ -479,6 +519,12 @@ export default function App() {
     () => amountGridTicks(pensionRows.flatMap((row) => [row.principal, row.total]), pensionChartGridYWon),
     [pensionChartGridYWon, pensionRows]
   );
+  const selectedPensionPerformance = pensionChartMode === 'savings' ? pensionPerformance.data?.savings ?? [] : pensionPerformance.data?.retirement ?? [];
+  const pensionComparison = useMemo(
+    () => pensionComparisonRows(selectedPensionPerformance, marketBenchmarks.data, pensionBenchmark, settings.data?.usIndexDollarBasis ?? false),
+    [marketBenchmarks.data, pensionBenchmark, selectedPensionPerformance, settings.data?.usIndexDollarBasis]
+  );
+  const pensionComparisonXTicks = useMemo(() => gridMonthTicks(pensionComparison, pensionChartGridXMonths), [pensionChartGridXMonths, pensionComparison]);
 
   const calendarCells = useMemo(() => {
     if (!effectivePeriod) return [];
@@ -737,22 +783,36 @@ export default function App() {
 
               <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                  <div className="flex flex-wrap items-center gap-3">
                     <h2 className="text-sm font-semibold">{pensionChartMode === 'savings' ? '연금저축' : '퇴직연금'}</h2>
+                    <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartView === 'assets' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartView('assets')}>기존 보기</button>
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartView === 'comparison' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartView('comparison')}>지수 비교</button>
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
                       <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'savings' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('savings')}>연금저축</button>
                       <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'retirement' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('retirement')}>퇴직연금</button>
                     </div>
-                    {pensionRows.length > 0 && <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs">
+                    {pensionChartView === 'comparison' && (
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
+                          {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => (
+                            <button key={key} className={`rounded-md px-2.5 py-1.5 font-semibold ${pensionBenchmark === key ? 'bg-white text-[#7c6ee6] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionBenchmark(key)}>{marketBenchmarkLabels[key]}</button>
+                          ))}
+                        </div>
+                        {pensionBenchmark !== 'kospi' && <span className="text-[11px] font-medium text-zinc-400">{settings.data?.usIndexDollarBasis ? '달러 기준' : '원화 환산'}</span>}
+                      </div>
+                    )}
+                    {pensionChartView === 'assets' && pensionRows.length > 0 && <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs">
                       <span className="text-zinc-500">원금 <strong className="ml-1 text-[#2f8cff]">{formatMoney(pensionRows[pensionRows.length - 1].principal)}</strong></span>
                       <span className="text-zinc-500">수익 <strong className={`ml-1 ${pensionRows[pensionRows.length - 1].profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(pensionRows[pensionRows.length - 1].profit)}</strong></span>
                       <span className="text-zinc-500">총액 <strong className="ml-1 text-zinc-950 dark:text-white">{formatMoney(pensionRows[pensionRows.length - 1].total)}</strong></span>
                     </div>}
                   </div>
                 </div>
-                {pensionRows.length > 0 ? (
+                {pensionChartView === 'assets' && pensionRows.length > 0 ? (
                   <div className="h-72">
                     <ResponsiveContainer>
                       <LineChart data={pensionRows}>
@@ -776,6 +836,20 @@ export default function App() {
                         <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="원금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
                         <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
                         <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : pensionChartView === 'comparison' && pensionComparison.length > 1 ? (
+                  <div className="h-72">
+                    <ResponsiveContainer>
+                      <LineChart data={pensionComparison}>
+                        <CartesianGrid vertical={false} stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9f9fa5' }} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={48} />
+                        <ReferenceLine y={0} stroke="#a1a1aa" strokeOpacity={0.7} />
+                        <Tooltip content={<PensionComparisonTooltip pensionLabel={pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'} benchmarkLabel={marketBenchmarkLabels[pensionBenchmark]} />} />
+                        <Line type="monotone" dataKey="pensionReturn" stroke={pensionReturnColor} strokeWidth={2.5} name="연금 TWR" dot={{ r: 2.5, fill: pensionReturnColor }} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="benchmarkReturn" stroke={benchmarkColor} strokeWidth={2.5} name={marketBenchmarkLabels[pensionBenchmark]} dot={{ r: 2.5, fill: benchmarkColor }} activeDot={{ r: 6 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1045,9 +1119,9 @@ export default function App() {
             </section>
           )}
 
-          {(dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error || pensionSavings.error || retirementPension.error) && (
+          {(dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error || pensionSavings.error || retirementPension.error || pensionPerformance.error || marketBenchmarks.error) && (
             <div className="mt-4 rounded-lg bg-rose-100 p-3 text-sm text-rose-700">
-              {dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error || pensionSavings.error || retirementPension.error}
+              {dashboard.error || transactions.error || metadata.error || imports.error || settings.error || manualNetWorth.error || pensionSavings.error || retirementPension.error || pensionPerformance.error || marketBenchmarks.error}
             </div>
           )}
           {(dashboard.loading || transactions.loading || calendarTransactions.loading) && <div className="mt-4 text-sm text-zinc-500">불러오는 중...</div>}
@@ -1400,6 +1474,28 @@ function PensionTooltip({
   );
 }
 
+function PensionComparisonTooltip({
+  active,
+  payload,
+  pensionLabel,
+  benchmarkLabel
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: { month?: string; date?: string; pensionReturn?: number; benchmarkReturn?: number } }>;
+  pensionLabel: string;
+  benchmarkLabel: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-950">
+      <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{row?.month} · 지수 {row?.date}</div>
+      <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">{pensionLabel}</span><strong style={{ color: pensionReturnColor }}>{Number(row?.pensionReturn ?? 0).toFixed(2)}%</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">{benchmarkLabel}</span><strong style={{ color: benchmarkColor }}>{Number(row?.benchmarkReturn ?? 0).toFixed(2)}%</strong></div>
+    </div>
+  );
+}
+
 function PensionManager({
   savingsData,
   retirementData,
@@ -1732,6 +1828,7 @@ function SettingsForm({
   const [chartGridYHundredMillion, setChartGridYHundredMillion] = useState(String(Math.round((settings?.chartGridYWon ?? 100_000_000) / 100_000_000)));
   const [pensionChartGridXMonths, setPensionChartGridXMonths] = useState(String(settings?.pensionChartGridXMonths ?? 12));
   const [pensionChartGridYTenThousand, setPensionChartGridYTenThousand] = useState(String(Math.round((settings?.pensionChartGridYWon ?? 10_000_000) / 10_000)));
+  const [usIndexDollarBasis, setUsIndexDollarBasis] = useState(settings?.usIndexDollarBasis ?? false);
   const [manualYear, setManualYear] = useState('');
   const [manualMonth, setManualMonth] = useState('');
   const [manualAmount, setManualAmount] = useState('');
@@ -1749,6 +1846,7 @@ function SettingsForm({
       setChartGridYHundredMillion(String(Math.round((settings.chartGridYWon ?? 100_000_000) / 100_000_000)));
       setPensionChartGridXMonths(String(settings.pensionChartGridXMonths ?? 12));
       setPensionChartGridYTenThousand(String(Math.round((settings.pensionChartGridYWon ?? 10_000_000) / 10_000)));
+      setUsIndexDollarBasis(settings.usIndexDollarBasis ?? false);
     }
   }, [settings]);
 
@@ -1828,6 +1926,10 @@ function SettingsForm({
               </div>
             </label>
           </div>
+          <label className="mt-3 flex items-center gap-2 text-sm font-medium">
+            <input className="h-4 w-4 accent-[#ff5a52]" type="checkbox" checked={usIndexDollarBasis} onChange={(event) => setUsIndexDollarBasis(event.target.checked)} />
+            미국 지수 달러 기준
+          </label>
         </div>
         <button
           className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -1842,6 +1944,7 @@ function SettingsForm({
                 chartGridYWon: Number(chartGridYHundredMillion || 1) * 100_000_000,
                 pensionChartGridXMonths: Number(pensionChartGridXMonths || 12),
                 pensionChartGridYWon: Number(pensionChartGridYTenThousand || 1000) * 10_000,
+                usIndexDollarBasis,
                 wealthBenchmark: settings?.wealthBenchmark ?? null
               });
               await onSaved();
