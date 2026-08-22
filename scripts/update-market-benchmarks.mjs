@@ -23,7 +23,7 @@ async function fredSeries(id) {
   if (!response.ok) throw new Error(`FRED ${id} 조회 실패: HTTP ${response.status}`);
   const rows = (await response.text()).trim().split(/\r?\n/).slice(1).map((line) => {
     const [date, rawValue] = line.split(',');
-    return { date, value: Number(rawValue) };
+    return { date, value: rawValue?.trim() ? Number(rawValue) : Number.NaN };
   });
   return completedMonthRows(rows);
 }

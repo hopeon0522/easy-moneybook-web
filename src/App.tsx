@@ -31,8 +31,12 @@ const expenseColor = '#ff5a52';
 const netWorthColor = '#18a667';
 const debtRatioColor = '#ff8a42';
 const pensionReturnColor = '#ff8f8a';
-const benchmarkColor = '#7c6ee6';
-const appVersion = 'v0.6.0';
+const benchmarkColors: Record<MarketBenchmarkKey, string> = {
+  kospi: '#2f8cff',
+  nasdaq100: '#7c6ee6',
+  sp500: '#18a667'
+};
+const appVersion = 'v0.6.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -172,28 +176,39 @@ function projectionColor(index: number) {
 function pensionComparisonRows(
   performance: Array<{ month: string; twr: number }>,
   market: MarketBenchmarkData | null | undefined,
-  benchmark: MarketBenchmarkKey,
   dollarBasis: boolean
 ) {
   if (!market) return [];
-  const performanceByMonth = new Map(performance.map((row) => [row.month, row.twr]));
+  const benchmarkKeys = Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[];
+  const marketByKey = Object.fromEntries(
+    benchmarkKeys.map((key) => [key, new Map(market.series[key].map((row) => [row.month, row]))])
+  ) as Record<MarketBenchmarkKey, Map<string, { month: string; date: string; value: number }>>;
   const fxByMonth = new Map(market.series.usdkrw.map((row) => [row.month, row.value]));
-  const joined = market.series[benchmark]
-    .filter((row) => performanceByMonth.has(row.month) && row.month <= market.completedThrough)
-    .map((row) => {
-      const fx = fxByMonth.get(row.month);
-      const marketValue = benchmark === 'kospi' || dollarBasis ? row.value : fx ? row.value * fx : null;
-      return marketValue == null ? null : { month: row.month, date: row.date, pensionRaw: performanceByMonth.get(row.month) ?? 0, marketValue };
+  const joined = performance
+    .filter((row) => row.month <= market.completedThrough)
+    .map((performanceRow) => {
+      const fx = fxByMonth.get(performanceRow.month);
+      const benchmarks = Object.fromEntries(benchmarkKeys.map((key) => {
+        const marketRow = marketByKey[key].get(performanceRow.month);
+        const value = marketRow && (key === 'kospi' || dollarBasis ? marketRow.value : fx ? marketRow.value * fx : null);
+        return [key, marketRow && value != null ? { date: marketRow.date, value } : null];
+      })) as Record<MarketBenchmarkKey, { date: string; value: number } | null>;
+      return benchmarkKeys.every((key) => benchmarks[key])
+        ? { month: performanceRow.month, pensionRaw: performanceRow.twr, benchmarks }
+        : null;
     })
     .filter((row): row is NonNullable<typeof row> => row != null);
   const first = joined[0];
   if (!first) return [];
   const pensionBase = 1 + first.pensionRaw / 100;
   return joined.map((row) => ({
-    ...row,
+    month: row.month,
     xValue: monthToTime(row.month),
     pensionReturn: pensionBase > 0 ? ((1 + row.pensionRaw / 100) / pensionBase - 1) * 100 : 0,
-    benchmarkReturn: (row.marketValue / first.marketValue - 1) * 100
+    ...Object.fromEntries(benchmarkKeys.flatMap((key) => [
+      [`${key}Return`, (row.benchmarks[key]!.value / first.benchmarks[key]!.value - 1) * 100],
+      [`${key}Date`, row.benchmarks[key]!.date]
+    ]))
   }));
 }
 
@@ -353,7 +368,7 @@ export default function App() {
   const [annualTableExpanded, setAnnualTableExpanded] = useState(false);
   const [pensionChartMode, setPensionChartMode] = useState<'savings' | 'retirement'>('savings');
   const [pensionChartView, setPensionChartView] = useState<'assets' | 'comparison'>('assets');
-  const [pensionBenchmark, setPensionBenchmark] = useState<MarketBenchmarkKey>('kospi');
+  const [pensionBenchmarks, setPensionBenchmarks] = useState<Record<MarketBenchmarkKey, boolean>>({ kospi: true, nasdaq100: true, sp500: true });
   const [hiddenAssetsCollapsed, setHiddenAssetsCollapsed] = useState(true);
   const [dashboardPieActiveIndex, setDashboardPieActiveIndex] = useState<number | undefined>();
   const [categoryPieActiveIndex, setCategoryPieActiveIndex] = useState<number | undefined>();
@@ -521,8 +536,8 @@ export default function App() {
   );
   const selectedPensionPerformance = pensionChartMode === 'savings' ? pensionPerformance.data?.savings ?? [] : pensionPerformance.data?.retirement ?? [];
   const pensionComparison = useMemo(
-    () => pensionComparisonRows(selectedPensionPerformance, marketBenchmarks.data, pensionBenchmark, settings.data?.usIndexDollarBasis ?? false),
-    [marketBenchmarks.data, pensionBenchmark, selectedPensionPerformance, settings.data?.usIndexDollarBasis]
+    () => pensionComparisonRows(selectedPensionPerformance, marketBenchmarks.data, settings.data?.usIndexDollarBasis ?? false),
+    [marketBenchmarks.data, selectedPensionPerformance, settings.data?.usIndexDollarBasis]
   );
   const pensionComparisonXTicks = useMemo(() => gridMonthTicks(pensionComparison, pensionChartGridXMonths), [pensionChartGridXMonths, pensionComparison]);
 
@@ -796,13 +811,21 @@ export default function App() {
                       <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'retirement' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('retirement')}>퇴직연금</button>
                     </div>
                     {pensionChartView === 'comparison' && (
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
+                      <div className="flex flex-col items-end gap-1.5">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs">
                           {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => (
-                            <button key={key} className={`rounded-md px-2.5 py-1.5 font-semibold ${pensionBenchmark === key ? 'bg-white text-[#7c6ee6] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionBenchmark(key)}>{marketBenchmarkLabels[key]}</button>
+                            <button
+                              key={key}
+                              aria-pressed={pensionBenchmarks[key]}
+                              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-semibold transition-colors ${pensionBenchmarks[key] ? 'border-zinc-200 bg-white text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100' : 'border-transparent bg-zinc-100 text-zinc-400 dark:bg-zinc-800'}`}
+                              onClick={() => setPensionBenchmarks((current) => ({ ...current, [key]: !current[key] }))}
+                            >
+                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: pensionBenchmarks[key] ? benchmarkColors[key] : '#b4b4ba' }} />
+                              {marketBenchmarkLabels[key]}
+                            </button>
                           ))}
                         </div>
-                        {pensionBenchmark !== 'kospi' && <span className="text-[11px] font-medium text-zinc-400">{settings.data?.usIndexDollarBasis ? '달러 기준' : '원화 환산'}</span>}
+                        <span className="min-h-4 text-[11px] font-medium text-zinc-400">미국 지수: {settings.data?.usIndexDollarBasis ? '달러 기준' : '원화 환산'}</span>
                       </div>
                     )}
                     {pensionChartView === 'assets' && pensionRows.length > 0 && <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs">
@@ -840,18 +863,28 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
                 ) : pensionChartView === 'comparison' && pensionComparison.length > 1 ? (
-                  <div className="h-72">
-                    <ResponsiveContainer>
-                      <LineChart data={pensionComparison}>
-                        <CartesianGrid vertical={false} stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
-                        <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9f9fa5' }} />
-                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={48} />
-                        <ReferenceLine y={0} stroke="#a1a1aa" strokeOpacity={0.7} />
-                        <Tooltip content={<PensionComparisonTooltip pensionLabel={pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'} benchmarkLabel={marketBenchmarkLabels[pensionBenchmark]} />} />
-                        <Line type="monotone" dataKey="pensionReturn" stroke={pensionReturnColor} strokeWidth={2.5} name="연금 TWR" dot={{ r: 2.5, fill: pensionReturnColor }} activeDot={{ r: 6 }} />
-                        <Line type="monotone" dataKey="benchmarkReturn" stroke={benchmarkColor} strokeWidth={2.5} name={marketBenchmarkLabels[pensionBenchmark]} dot={{ r: 2.5, fill: benchmarkColor }} activeDot={{ r: 6 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div>
+                    <div className="h-72">
+                      <ResponsiveContainer>
+                        <LineChart data={pensionComparison}>
+                          <CartesianGrid vertical={false} stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
+                          <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9f9fa5' }} />
+                          <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={48} />
+                          <ReferenceLine y={0} stroke="#a1a1aa" strokeOpacity={0.7} />
+                          <Tooltip content={<PensionComparisonTooltip pensionLabel={pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'} enabledBenchmarks={pensionBenchmarks} />} />
+                          <Line type="monotone" dataKey="pensionReturn" stroke={pensionReturnColor} strokeWidth={2.5} name="연금 TWR" dot={{ r: 2.5, fill: pensionReturnColor }} activeDot={{ r: 6 }} />
+                          {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => pensionBenchmarks[key] && (
+                            <Line key={key} type="monotone" dataKey={`${key}Return`} stroke={benchmarkColors[key]} strokeWidth={1.5} name={marketBenchmarkLabels[key]} dot={{ r: 2, fill: benchmarkColors[key] }} activeDot={{ r: 5, fill: benchmarkColors[key] }} />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+                      <span className="flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ backgroundColor: pensionReturnColor }} />{pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'}</span>
+                      {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => pensionBenchmarks[key] && (
+                        <span key={key} className="flex items-center gap-1.5"><span className="h-px w-5" style={{ backgroundColor: benchmarkColors[key] }} />{marketBenchmarkLabels[key]}</span>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid h-40 place-items-center text-sm text-zinc-500">{pensionChartMode === 'savings' ? '연금저축 거래가 없습니다.' : '입력된 퇴직연금 데이터가 없습니다.'}</div>
@@ -1478,20 +1511,25 @@ function PensionComparisonTooltip({
   active,
   payload,
   pensionLabel,
-  benchmarkLabel
+  enabledBenchmarks
 }: {
   active?: boolean;
-  payload?: Array<{ payload?: { month?: string; date?: string; pensionReturn?: number; benchmarkReturn?: number } }>;
+  payload?: Array<{ payload?: Record<string, string | number | undefined> }>;
   pensionLabel: string;
-  benchmarkLabel: string;
+  enabledBenchmarks: Record<MarketBenchmarkKey, boolean>;
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload;
   return (
     <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-950">
-      <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{row?.month} · 지수 {row?.date}</div>
+      <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{row?.month}</div>
       <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">{pensionLabel}</span><strong style={{ color: pensionReturnColor }}>{Number(row?.pensionReturn ?? 0).toFixed(2)}%</strong></div>
-      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">{benchmarkLabel}</span><strong style={{ color: benchmarkColor }}>{Number(row?.benchmarkReturn ?? 0).toFixed(2)}%</strong></div>
+      {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => enabledBenchmarks[key] && (
+        <div key={key} className="mt-1 flex items-center justify-between gap-5">
+          <span className="text-zinc-500">{marketBenchmarkLabels[key]} <span className="text-[10px] text-zinc-400">{row?.[`${key}Date`]}</span></span>
+          <strong style={{ color: benchmarkColors[key] }}>{Number(row?.[`${key}Return`] ?? 0).toFixed(2)}%</strong>
+        </div>
+      ))}
     </div>
   );
 }
