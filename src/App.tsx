@@ -36,7 +36,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.6.2';
+const appVersion = 'v0.6.3';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1148,7 +1148,14 @@ export default function App() {
           {tab === '설정' && (
             <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="mb-3 text-sm font-semibold">설정</h2>
-              <SettingsForm settings={settings.data} manualPoints={manualNetWorth.data ?? []} onSaved={settings.reload} onManualChanged={refreshAll} />
+              <SettingsForm
+                settings={settings.data}
+                manualPoints={manualNetWorth.data ?? []}
+                marketData={marketBenchmarks.data}
+                onSaved={settings.reload}
+                onManualChanged={refreshAll}
+                onMarketReload={marketBenchmarks.reload}
+              />
             </section>
           )}
 
@@ -1852,13 +1859,17 @@ function AssetManager({
 function SettingsForm({
   settings,
   manualPoints,
+  marketData,
   onSaved,
-  onManualChanged
+  onManualChanged,
+  onMarketReload
 }: {
   settings?: AppSettings | null;
   manualPoints: ManualNetWorthPoint[];
+  marketData?: MarketBenchmarkData | null;
   onSaved: () => Promise<void>;
   onManualChanged: () => Promise<void>;
+  onMarketReload: () => Promise<void>;
 }) {
   const [appTitle, setAppTitle] = useState(settings?.appTitle ?? 'EasyMoneyBook Web');
   const [appSubtitle, setAppSubtitle] = useState(settings?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간');
@@ -1875,6 +1886,7 @@ function SettingsForm({
   const [backupSaving, setBackupSaving] = useState(false);
   const [backupRestoring, setBackupRestoring] = useState(false);
   const [benchmarkRefreshing, setBenchmarkRefreshing] = useState(false);
+  const [marketRefreshing, setMarketRefreshing] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -2033,6 +2045,52 @@ function SettingsForm({
           <p className="mt-3 text-xs text-zinc-400">아직 통계를 받아오지 않았습니다. 위 버튼을 눌러 최초 갱신해 주세요.</p>
         )}
         <p className="mt-2 text-[11px] leading-4 text-zinc-400">표의 백분율은 공식 10분위 경계값 사이를 보간한 추정치이며 개인이 아닌 가구 순자산 비교입니다.</p>
+      </section>
+
+      <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">시장 지수 데이터</h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              코스피, 나스닥100, S&amp;P500과 원/달러 환율의 완료된 월말 자료입니다.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+              disabled={marketRefreshing}
+              onClick={async () => {
+                setMarketRefreshing(true);
+                try {
+                  await onMarketReload();
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : '시장 지수 데이터를 다시 불러오지 못했습니다.');
+                } finally {
+                  setMarketRefreshing(false);
+                }
+              }}
+            >
+              {marketRefreshing ? '불러오는 중...' : '최신 데이터 다시 불러오기'}
+            </button>
+            <a
+              className="inline-flex items-center rounded-lg bg-[#2f8cff] px-4 py-2 text-sm font-semibold text-white"
+              href="https://github.com/hopeon0522/easy-moneybook-web/actions/workflows/pages.yml"
+              target="_blank"
+              rel="noreferrer"
+            >
+              새 월말 자료 갱신
+            </a>
+          </div>
+        </div>
+        {marketData ? (
+          <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            <p>최근 완료 기준월 {marketData.completedThrough}</p>
+            <p>마지막 데이터 생성 {dayjs(marketData.updatedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-zinc-400">시장 지수 데이터를 아직 불러오지 못했습니다.</p>
+        )}
+        <p className="mt-2 text-[11px] leading-4 text-zinc-400">새 월말 자료 갱신 화면에서 Run workflow를 실행하면 지수 파일 생성과 홈페이지 배포가 함께 진행됩니다.</p>
       </section>
 
       <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
