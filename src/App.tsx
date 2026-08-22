@@ -36,7 +36,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.6.1';
+const appVersion = 'v0.6.2';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -874,7 +874,7 @@ export default function App() {
                           <Tooltip content={<PensionComparisonTooltip pensionLabel={pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'} enabledBenchmarks={pensionBenchmarks} />} />
                           <Line type="monotone" dataKey="pensionReturn" stroke={pensionReturnColor} strokeWidth={2.5} name="연금 TWR" dot={{ r: 2.5, fill: pensionReturnColor }} activeDot={{ r: 6 }} />
                           {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => pensionBenchmarks[key] && (
-                            <Line key={key} type="monotone" dataKey={`${key}Return`} stroke={benchmarkColors[key]} strokeWidth={1.5} name={marketBenchmarkLabels[key]} dot={{ r: 2, fill: benchmarkColors[key] }} activeDot={{ r: 5, fill: benchmarkColors[key] }} />
+                            <Line key={key} type="monotone" dataKey={`${key}Return`} stroke={benchmarkColors[key]} strokeWidth={1.5} strokeDasharray="6 4" name={marketBenchmarkLabels[key]} dot={{ r: 1.25, fill: benchmarkColors[key], strokeWidth: 0 }} activeDot={{ r: 4, fill: benchmarkColors[key], strokeWidth: 0 }} />
                           ))}
                         </LineChart>
                       </ResponsiveContainer>
@@ -882,7 +882,7 @@ export default function App() {
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
                       <span className="flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ backgroundColor: pensionReturnColor }} />{pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'}</span>
                       {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => pensionBenchmarks[key] && (
-                        <span key={key} className="flex items-center gap-1.5"><span className="h-px w-5" style={{ backgroundColor: benchmarkColors[key] }} />{marketBenchmarkLabels[key]}</span>
+                        <span key={key} className="flex items-center gap-1.5"><span className="w-5 border-t border-dashed" style={{ borderColor: benchmarkColors[key] }} />{marketBenchmarkLabels[key]}</span>
                       ))}
                     </div>
                   </div>
