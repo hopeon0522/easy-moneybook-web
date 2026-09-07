@@ -36,7 +36,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.7.0';
+const appVersion = 'v0.7.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -1611,8 +1611,8 @@ function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | 
 }
 
 function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData | null; onSaved: () => Promise<void> }) {
-  const [year, setYear] = useState('');
-  const [month, setMonth] = useState('');
+  const [year, setYear] = useState(() => dayjs().format('YYYY'));
+  const [month, setMonth] = useState(() => dayjs().format('MM'));
   const [contribution, setContribution] = useState('');
   const [accountBalance, setAccountBalance] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1641,8 +1641,8 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
         <div className="mt-4 grid gap-2 sm:grid-cols-[0.8fr_0.6fr_1.2fr_1.2fr_auto]">
           <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="년" value={year} onChange={(event) => setYear(event.target.value.replace(/\D/g, '').slice(0, 4))} />
           <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월" value={month} onChange={(event) => setMonth(event.target.value.replace(/\D/g, '').slice(0, 2))} />
-          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="월 납입금" value={contribution} onChange={(event) => setContribution(event.target.value.replace(/[^\d.-]/g, ''))} />
-          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" placeholder="계좌잔액" value={accountBalance} onChange={(event) => setAccountBalance(event.target.value.replace(/[^\d.-]/g, ''))} />
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label="월 납입금" placeholder="월 납입금" value={formatAccountingInput(contribution)} onChange={(event) => setContribution(event.target.value.replace(/[^\d.-]/g, ''))} />
+          <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label="계좌잔액" placeholder="계좌잔액" value={formatAccountingInput(accountBalance)} onChange={(event) => setAccountBalance(event.target.value.replace(/[^\d.-]/g, ''))} />
           <button
             className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             disabled={saving}
@@ -1650,8 +1650,8 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
               setSaving(true);
               try {
                 await api.updateRetirementMonth({ period: `${year}-${month.padStart(2, '0')}`, principal: Number(contribution || 0), balance: Number(accountBalance || 0) });
-                setYear('');
-                setMonth('');
+                setYear(dayjs().format('YYYY'));
+                setMonth(dayjs().format('MM'));
                 setContribution('');
                 setAccountBalance('');
                 await onSaved();
@@ -1700,8 +1700,8 @@ function RetirementMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][
   return (
     <tr className="border-t border-zinc-100 dark:border-zinc-800">
       <td className="px-3 py-3 font-semibold">{row.period}</td>
-      <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" value={contribution} onChange={(event) => setContribution(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
-      <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" value={accountBalance} onChange={(event) => setAccountBalance(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
+      <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label={`${row.period} 월 납입금`} value={formatAccountingInput(contribution)} onChange={(event) => setContribution(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
+      <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label={`${row.period} 계좌잔액`} value={formatAccountingInput(accountBalance)} onChange={(event) => setAccountBalance(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
       <td className={`px-3 py-3 text-right font-semibold tabular-nums ${row.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(row.profit)}</td>
       <td className="px-3 py-3 text-right">
         <div className="flex justify-end gap-2">
@@ -1727,12 +1727,12 @@ function PensionMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][num
     <tr className="border-t border-zinc-100 dark:border-zinc-800">
       <td className="px-3 py-3 font-semibold">{row.period}</td>
       <td className="px-3 py-3 text-right">
-        <input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" value={principal} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} />
+        <input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label={`${row.period} 월 납입금`} value={formatAccountingInput(principal)} onChange={(event) => setPrincipal(event.target.value.replace(/[^\d.-]/g, ''))} />
         {row.isManual && <div className="mt-1 text-[11px] text-zinc-400">자동 {formatMoney(row.autoPrincipal)}</div>}
       </td>
       <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatMoney(row.balance)}</td>
       <td className="px-3 py-3 text-right">
-        <input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-[#ff5a52]' : ''}`} inputMode="numeric" value={profit} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
+        <input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-[#ff5a52]' : ''}`} inputMode="numeric" aria-label={`${row.period} 월 수익`} value={formatAccountingInput(profit)} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
         {row.isManual && <div className="mt-1 text-[11px] text-zinc-400">자동 {formatMoney(row.autoProfit)}</div>}
       </td>
       <td className="px-3 py-3"><span className={`rounded px-2 py-1 text-xs font-semibold ${row.isManual ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>{row.isManual ? '수동' : '자동'}</span></td>
