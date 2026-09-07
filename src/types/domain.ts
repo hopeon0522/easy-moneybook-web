@@ -130,6 +130,7 @@ export interface PensionSavingsData {
     period: string;
     principal: number;
     profit: number;
+    balance: number;
     autoPrincipal: number;
     autoProfit: number;
     isManual: boolean;

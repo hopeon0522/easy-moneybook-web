@@ -38,7 +38,7 @@ export type LocalData = {
   settings: Array<{ key: string; value: string; updated_at: string }>;
   manual_net_worth: Array<{ id: number; period: string; amount: number; created_at: string; updated_at: string }>;
   pension_overrides: Array<{ period: string; principal: number; profit: number; updated_at: string }>;
-  retirement_pension: Array<{ period: string; principal: number; profit: number; updated_at: string }>;
+  retirement_pension: Array<{ period: string; principal: number; profit: number; balance?: number; updated_at: string }>;
   import_files: Array<{
     id: number;
     source_file: string;
@@ -69,13 +69,34 @@ export function emptyLocalData(): LocalData {
   };
 }
 
+export function normalizeRetirementPensionRows(rows: LocalData['retirement_pension'] = []): LocalData['retirement_pension'] {
+  let previousBalance = 0;
+  return [...rows]
+    .sort((left, right) => left.period.localeCompare(right.period))
+    .map((row) => {
+      const principal = Number(row.principal) || 0;
+      const storedProfit = Number(row.profit) || 0;
+      const balance = typeof row.balance === 'number' && Number.isFinite(row.balance)
+        ? row.balance
+        : previousBalance + principal + storedProfit;
+      const normalized = {
+        ...row,
+        principal,
+        balance,
+        profit: balance - previousBalance - principal
+      };
+      previousBalance = balance;
+      return normalized;
+    });
+}
+
 function normalizeLocalData(data?: LocalData): LocalData {
   if (!data) return emptyLocalData();
   return {
     ...emptyLocalData(),
     ...data,
     pension_overrides: Array.isArray(data.pension_overrides) ? data.pension_overrides : [],
-    retirement_pension: Array.isArray(data.retirement_pension) ? data.retirement_pension : []
+    retirement_pension: normalizeRetirementPensionRows(Array.isArray(data.retirement_pension) ? data.retirement_pension : [])
   };
 }
 

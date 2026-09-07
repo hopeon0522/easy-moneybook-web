@@ -14,7 +14,7 @@ import {
   WealthBenchmark
 } from '../types/domain';
 import { parseEasyMoneyBookFile } from '../lib/excelParser';
-import { emptyLocalData, loadLocalData, LocalAssetRow, LocalData, nextId, saveLocalData } from '../lib/localStore';
+import { emptyLocalData, loadLocalData, LocalAssetRow, LocalData, nextId, normalizeRetirementPensionRows, saveLocalData } from '../lib/localStore';
 
 type LegacyPayload = {
   version: number;
@@ -44,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.6.3';
+const backupAppVersion = '0.7.0';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -70,7 +70,7 @@ async function persist(data: LocalData): Promise<void> {
   const normalized = {
     ...data,
     pension_overrides: data.pension_overrides ?? [],
-    retirement_pension: data.retirement_pension ?? []
+    retirement_pension: normalizeRetirementPensionRows(data.retirement_pension ?? [])
   };
   dataCache = normalized;
   await saveLocalData(normalized);
@@ -152,7 +152,7 @@ async function saveBackupBlob(blob: Blob, fileName: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function pensionMonthlyRows(transactions: Transaction[], data: LocalData): PensionSavingsData['rows'] {
+function pensionMonthlyRows(transactions: Transaction[], data: LocalData): Array<Omit<PensionSavingsData['rows'][number], 'balance'>> {
   const automatic = new Map<string, { principal: number; profit: number }>();
   for (const row of transactions.filter((item) => item.asset === pensionAssetName)) {
     const period = row.date.slice(0, 7);
@@ -191,10 +191,15 @@ function pensionMonthlyRows(transactions: Transaction[], data: LocalData): Pensi
 
 async function pensionSavings(): Promise<PensionSavingsData> {
   const [transactions, assets, data] = await Promise.all([allTransactions(), assetRows(), localData()]);
+  const initialValue = assets.find((asset) => asset.name === pensionAssetName)?.initial_value ?? 0;
+  let balance = initialValue;
+  const rows = pensionMonthlyRows(transactions, data)
+    .map((row) => ({ ...row, balance: (balance += row.principal + row.profit) }))
+    .reverse();
   return {
     assetName: pensionAssetName,
-    initialValue: assets.find((asset) => asset.name === pensionAssetName)?.initial_value ?? 0,
-    rows: pensionMonthlyRows(transactions, data).reverse()
+    initialValue,
+    rows
   };
 }
 
@@ -205,6 +210,7 @@ async function retirementPension(): Promise<PensionSavingsData> {
       period: row.period,
       principal: row.principal,
       profit: row.profit,
+      balance: row.balance ?? 0,
       autoPrincipal: 0,
       autoProfit: 0,
       isManual: true
@@ -581,7 +587,7 @@ export const api = {
   marketBenchmarks,
   updatePensionMonth: async (input: { period: string; principal: number; profit: number }) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
-    if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('원금과 수익을 숫자로 입력해 주세요.');
+    if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('납입금과 수익을 숫자로 입력해 주세요.');
     const data = await localData();
     const now = new Date().toISOString();
     const row = (data.pension_overrides ?? []).find((item) => item.period === input.period);
@@ -596,14 +602,16 @@ export const api = {
     await persist(data);
     return { ok: true as const };
   },
-  updateRetirementMonth: async (input: { period: string; principal: number; profit: number }) => {
+  updateRetirementMonth: async (input: { period: string; principal: number; balance: number }) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new Error('년/월은 YYYY-MM 형식으로 입력해 주세요.');
-    if (!Number.isFinite(input.principal) || !Number.isFinite(input.profit)) throw new Error('원금과 수익을 숫자로 입력해 주세요.');
+    if (!Number.isFinite(input.principal) || !Number.isFinite(input.balance)) throw new Error('월 납입금과 계좌잔액을 숫자로 입력해 주세요.');
     const data = await localData();
     const now = new Date().toISOString();
-    const row = (data.retirement_pension ?? []).find((item) => item.period === input.period);
-    if (row) Object.assign(row, { principal: input.principal, profit: input.profit, updated_at: now });
-    else data.retirement_pension.push({ period: input.period, principal: input.principal, profit: input.profit, updated_at: now });
+    const rows = normalizeRetirementPensionRows(data.retirement_pension ?? []);
+    const row = rows.find((item) => item.period === input.period);
+    if (row) Object.assign(row, { principal: input.principal, balance: input.balance, updated_at: now });
+    else rows.push({ period: input.period, principal: input.principal, balance: input.balance, profit: 0, updated_at: now });
+    data.retirement_pension = normalizeRetirementPensionRows(rows);
     await persist(data);
     return { ok: true as const };
   },
