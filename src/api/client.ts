@@ -44,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.8.0';
+const backupAppVersion = '0.8.1';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -423,6 +423,13 @@ async function settings(): Promise<AppSettings> {
     wealthBenchmark = values.wealthBenchmark ? JSON.parse(values.wealthBenchmark) as WealthBenchmark : null;
   } catch {
     wealthBenchmark = null;
+  }
+  if (wealthBenchmark && !wealthBenchmark.percentiles?.some((row) => Number(row.percentile) >= 99)) {
+    try {
+      wealthBenchmark = await refreshWealthBenchmark();
+    } catch {
+      // Keep the saved snapshot when offline. The UI will avoid extrapolating beyond it.
+    }
   }
   return {
     appTitle: values.appTitle || settingsDefaults.appTitle,

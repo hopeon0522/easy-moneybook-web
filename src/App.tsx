@@ -36,7 +36,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.8.0';
+const appVersion = 'v0.8.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -221,23 +221,37 @@ function estimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
     populationPercentile = (value / points[0].amount) * points[0].percentile;
   } else {
     const upperIndex = points.findIndex((row) => value <= row.amount);
-    const lower = upperIndex > 0 ? points[upperIndex - 1] : points.at(-2)!;
-    const upper = upperIndex > 0 ? points[upperIndex] : points.at(-1)!;
-    const amountPosition = (Math.log(value) - Math.log(lower.amount)) / (Math.log(upper.amount) - Math.log(lower.amount));
-    populationPercentile = lower.percentile + amountPosition * (upper.percentile - lower.percentile);
+    if (upperIndex === -1) {
+      populationPercentile = points.at(-1)!.percentile;
+    } else {
+      const lower = points[upperIndex - 1];
+      const upper = points[upperIndex];
+      const amountPosition = (Math.log(value) - Math.log(lower.amount)) / (Math.log(upper.amount) - Math.log(lower.amount));
+      populationPercentile = lower.percentile + amountPosition * (upper.percentile - lower.percentile);
+    }
   }
   return Math.max(0.1, Math.min(99.9, 100 - populationPercentile));
 }
 
+function maximumWealthBenchmark(benchmark: WealthBenchmark | null) {
+  return benchmark?.percentiles?.filter((row) => row.amount > 0).sort((a, b) => b.amount - a.amount)[0] ?? null;
+}
+
 function exceedsWealthBenchmark(value: number, benchmark: WealthBenchmark | null) {
-  const maximum = benchmark?.percentiles?.filter((row) => row.amount > 0).sort((a, b) => b.amount - a.amount)[0];
+  const maximum = maximumWealthBenchmark(benchmark);
   return Boolean(maximum && maximum.percentile >= 99.9 && value > maximum.amount);
+}
+
+function exceedsIncompleteWealthBenchmark(value: number, benchmark: WealthBenchmark | null) {
+  const maximum = maximumWealthBenchmark(benchmark);
+  return Boolean(maximum && maximum.percentile < 99.9 && value > maximum.amount);
 }
 
 function formatEstimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
   const percent = estimatedTopPercent(value, benchmark);
   if (percent == null) return '백분율 산정 불가';
   if (exceedsWealthBenchmark(value, benchmark)) return '추정 상위 0.1% 미만';
+  if (exceedsIncompleteWealthBenchmark(value, benchmark)) return `추정 상위 ${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}% 이내 · 통계 갱신 필요`;
   return `추정 상위 ${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
 }
 
@@ -245,6 +259,7 @@ function formatEstimatedPercentValue(value: number, benchmark: WealthBenchmark |
   const percent = estimatedTopPercent(value, benchmark);
   if (percent == null) return '-';
   if (exceedsWealthBenchmark(value, benchmark)) return '0.1% 미만';
+  if (exceedsIncompleteWealthBenchmark(value, benchmark)) return `${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}% 이내`;
   return `${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
 }
 
