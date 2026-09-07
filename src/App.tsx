@@ -36,7 +36,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.7.1';
+const appVersion = 'v0.8.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -229,17 +229,22 @@ function estimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
   return Math.max(0.1, Math.min(99.9, 100 - populationPercentile));
 }
 
+function exceedsWealthBenchmark(value: number, benchmark: WealthBenchmark | null) {
+  const maximum = benchmark?.percentiles?.filter((row) => row.amount > 0).sort((a, b) => b.amount - a.amount)[0];
+  return Boolean(maximum && maximum.percentile >= 99.9 && value > maximum.amount);
+}
+
 function formatEstimatedTopPercent(value: number, benchmark: WealthBenchmark | null) {
   const percent = estimatedTopPercent(value, benchmark);
   if (percent == null) return '백분율 산정 불가';
-  if (percent < 1) return '추정 상위 1% 미만';
+  if (exceedsWealthBenchmark(value, benchmark)) return '추정 상위 0.1% 미만';
   return `추정 상위 ${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
 }
 
 function formatEstimatedPercentValue(value: number, benchmark: WealthBenchmark | null) {
   const percent = estimatedTopPercent(value, benchmark);
   if (percent == null) return '-';
-  if (percent < 1) return '1% 미만';
+  if (exceedsWealthBenchmark(value, benchmark)) return '0.1% 미만';
   return `${percent.toLocaleString('ko-KR', { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
 }
 
@@ -2014,7 +2019,7 @@ function SettingsForm({
           <div>
             <h3 className="text-sm font-semibold">대한민국 가구 순자산 통계</h3>
             <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-              국가데이터처·한국은행·금융감독원의 공식 가계금융복지조사 통계입니다. 가구 단위이며 부동산 등 실물자산을 포함합니다.
+              국가데이터처·한국은행·금융감독원의 공식 조사와 NH투자증권의 상위 가구 마이크로데이터 분석을 함께 사용합니다. 가구 단위이며 부동산 등 실물자산을 포함합니다.
             </p>
           </div>
           <button
@@ -2026,13 +2031,13 @@ function SettingsForm({
                 await api.refreshWealthBenchmark();
                 await onSaved();
               } catch (error) {
-                window.alert(error instanceof Error ? error.message : '공식 순자산 통계 갱신에 실패했습니다.');
+                window.alert(error instanceof Error ? error.message : '순자산 통계 갱신에 실패했습니다.');
               } finally {
                 setBenchmarkRefreshing(false);
               }
             }}
           >
-            {benchmarkRefreshing ? '불러오는 중...' : '최신 공식 통계 불러오기'}
+            {benchmarkRefreshing ? '불러오는 중...' : '최신 순자산 통계 불러오기'}
           </button>
         </div>
         {settings?.wealthBenchmark ? (
@@ -2041,12 +2046,25 @@ function SettingsForm({
             <p>{settings.wealthBenchmark.referenceDate} 기준 · {settings.wealthBenchmark.surveyYear}년 조사 · 발표 {settings.wealthBenchmark.publishedAt}</p>
             {settings.wealthBenchmark.sourceCheckedAt && <p>공식 자료 확인 {dayjs(settings.wealthBenchmark.sourceCheckedAt).format('YYYY.MM.DD HH:mm:ss')}</p>}
             <p>마지막 갱신 {dayjs(settings.wealthBenchmark.refreshedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
-            <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
+            <div className="flex flex-col items-start gap-0.5">
+              <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
+              {settings.wealthBenchmark.upperTailSourceUrl && (
+                <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.upperTailSourceUrl} target="_blank" rel="noreferrer">
+                  {settings.wealthBenchmark.upperTailSourceName}{settings.wealthBenchmark.upperTailPublishedAt ? ` · 발표 ${settings.wealthBenchmark.upperTailPublishedAt}` : ''}
+                  {settings.wealthBenchmark.upperTailReferenceDate ? ` · 기준 ${settings.wealthBenchmark.upperTailReferenceDate}` : ''}
+                </a>
+              )}
+            </div>
+            {settings.wealthBenchmark.percentiles.some((row) => row.percentile >= 95) && (
+              <p className="mt-1 font-medium text-zinc-600 dark:text-zinc-300">
+                상위 10% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 90)?.amount ?? 0)} · 상위 5% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 95)?.amount ?? 0)} · 상위 1% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 99)?.amount ?? 0)} · 상위 0.1% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 99.9)?.amount ?? 0)}
+              </p>
+            )}
           </div>
         ) : (
           <p className="mt-3 text-xs text-zinc-400">아직 통계를 받아오지 않았습니다. 위 버튼을 눌러 최초 갱신해 주세요.</p>
         )}
-        <p className="mt-2 text-[11px] leading-4 text-zinc-400">표의 백분율은 공식 10분위 경계값 사이를 보간한 추정치이며 개인이 아닌 가구 순자산 비교입니다.</p>
+        <p className="mt-2 text-[11px] leading-4 text-zinc-400">표의 백분율은 공개된 분위 경계값 사이를 로그 보간한 추정치입니다. 97.1억원 이상은 상위 0.1% 미만으로만 표시하며 개인이 아닌 가구 순자산 비교입니다.</p>
       </section>
 
       <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">

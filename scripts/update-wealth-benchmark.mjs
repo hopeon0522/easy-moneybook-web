@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 
 const boardUrl = 'https://mods.go.kr/board.es?mid=b80501010000&bid=215';
 const outputPath = new URL('../public/korea-net-worth-latest.json', import.meta.url);
+const upperTailPath = new URL('./wealth-upper-tail.json', import.meta.url);
 const requestHeaders = { 'user-agent': 'EasyMoneyBook-Web/0.5 (+https://github.com/hopeon0522/easy-moneybook-web)' };
 const forceProxy = process.env.FORCE_STATS_PROXY === '1';
 const execFileAsync = promisify(execFile);
@@ -105,6 +106,17 @@ percentiles.sort((a, b) => a.percentile - b.percentile);
 const medianNetWorth = percentiles.find((row) => row.percentile === 50)?.amount;
 if (!averageNetWorth || !medianNetWorth || percentiles.length < 9) throw new Error('공식 순자산 통계 추출 결과가 불완전합니다.');
 
+const upperTailByYear = JSON.parse(await fs.readFile(upperTailPath, 'utf8'));
+const upperTailEntry = Object.entries(upperTailByYear)
+  .filter(([year]) => Number(year) <= latest.year)
+  .sort(([left], [right]) => Number(right) - Number(left))[0];
+const upperTailYear = upperTailEntry ? Number(upperTailEntry[0]) : null;
+const upperTail = upperTailEntry?.[1];
+if (upperTail) {
+  percentiles.push(...upperTail.percentiles.filter((anchor) => !percentiles.some((row) => row.percentile === anchor.percentile)));
+  percentiles.sort((a, b) => a.percentile - b.percentile);
+}
+
 const payload = {
   surveyYear: latest.year,
   referenceDate: `${latest.year}-03-31`,
@@ -114,7 +126,14 @@ const payload = {
   medianNetWorth,
   percentiles,
   sourceName: `국가데이터처·한국은행·금융감독원 ${latest.year}년 가계금융복지조사`,
-  sourceUrl: `https://mods.go.kr/board.es?act=view&bid=215&list_no=${latest.listNo}&mid=b80501010000`
+  sourceUrl: `https://mods.go.kr/board.es?act=view&bid=215&list_no=${latest.listNo}&mid=b80501010000`,
+  ...(upperTail ? {
+    upperTailSurveyYear: upperTailYear,
+    upperTailReferenceDate: upperTail.referenceDate,
+    upperTailPublishedAt: upperTail.publishedAt,
+    upperTailSourceName: upperTail.sourceName,
+    upperTailSourceUrl: upperTail.sourceUrl
+  } : {})
 };
 
 await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`);

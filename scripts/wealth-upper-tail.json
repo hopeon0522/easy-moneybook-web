@@ -1,0 +1,14 @@
+{
+  "2025": {
+    "referenceDate": "2025-03-31",
+    "publishedAt": "2026-04-15",
+    "percentiles": [
+      { "percentile": 95, "amount": 1630000000 },
+      { "percentile": 99, "amount": 3480000000 },
+      { "percentile": 99.5, "amount": 4740000000 },
+      { "percentile": 99.9, "amount": 9710000000 }
+    ],
+    "sourceName": "NH투자증권 THE100리포트 121호 상위 1% 부자가구 보고서",
+    "sourceUrl": "https://download.nhqv.com/CommFile/3000000000/152/4/20260414095322374.pdf"
+  }
+}

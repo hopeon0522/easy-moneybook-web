@@ -44,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.7.1';
+const backupAppVersion = '0.8.0';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -459,14 +459,14 @@ async function updateSettings(input: AppSettings): Promise<AppSettings> {
 
 async function refreshWealthBenchmark(): Promise<WealthBenchmark> {
   const response = await fetch(`${import.meta.env.BASE_URL}korea-net-worth-latest.json?t=${Date.now()}`, { cache: 'no-store' });
-  if (!response.ok) throw new Error('공식 순자산 통계 자료를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  if (!response.ok) throw new Error('순자산 통계 자료를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
   const raw = await response.json() as Omit<WealthBenchmark, 'refreshedAt'>;
   if (
     !Number.isFinite(raw.averageNetWorth) ||
     !Number.isFinite(raw.medianNetWorth) ||
     !Array.isArray(raw.percentiles) ||
     raw.percentiles.length < 2
-  ) throw new Error('공식 순자산 통계 자료의 형식이 올바르지 않습니다.');
+  ) throw new Error('순자산 통계 자료의 형식이 올바르지 않습니다.');
 
   const benchmark: WealthBenchmark = {
     ...raw,

@@ -6,43 +6,25 @@
   "averageNetWorth": 471437032,
   "medianNetWorth": 238600000,
   "percentiles": [
-    {
-      "percentile": 10,
-      "amount": 12100000
-    },
-    {
-      "percentile": 20,
-      "amount": 51080000
-    },
-    {
-      "percentile": 30,
-      "amount": 102960000
-    },
-    {
-      "percentile": 40,
-      "amount": 164720000
-    },
-    {
-      "percentile": 50,
-      "amount": 238600000
-    },
-    {
-      "percentile": 60,
-      "amount": 330500000
-    },
-    {
-      "percentile": 70,
-      "amount": 461800000
-    },
-    {
-      "percentile": 80,
-      "amount": 693800000
-    },
-    {
-      "percentile": 90,
-      "amount": 1100200000
-    }
+    { "percentile": 10, "amount": 12100000 },
+    { "percentile": 20, "amount": 51080000 },
+    { "percentile": 30, "amount": 102960000 },
+    { "percentile": 40, "amount": 164720000 },
+    { "percentile": 50, "amount": 238600000 },
+    { "percentile": 60, "amount": 330500000 },
+    { "percentile": 70, "amount": 461800000 },
+    { "percentile": 80, "amount": 693800000 },
+    { "percentile": 90, "amount": 1100200000 },
+    { "percentile": 95, "amount": 1630000000 },
+    { "percentile": 99, "amount": 3480000000 },
+    { "percentile": 99.5, "amount": 4740000000 },
+    { "percentile": 99.9, "amount": 9710000000 }
   ],
   "sourceName": "국가데이터처·한국은행·금융감독원 2025년 가계금융복지조사",
-  "sourceUrl": "https://mods.go.kr/board.es?act=view&bid=215&list_no=439535&mid=b80501010000"
+  "sourceUrl": "https://mods.go.kr/board.es?act=view&bid=215&list_no=439535&mid=b80501010000",
+  "upperTailSurveyYear": 2025,
+  "upperTailReferenceDate": "2025-03-31",
+  "upperTailPublishedAt": "2026-04-15",
+  "upperTailSourceName": "NH투자증권 THE100리포트 121호 상위 1% 부자가구 보고서",
+  "upperTailSourceUrl": "https://download.nhqv.com/CommFile/3000000000/152/4/20260414095322374.pdf"
 }

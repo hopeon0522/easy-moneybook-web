@@ -113,6 +113,11 @@ export interface WealthBenchmark {
   percentiles: Array<{ percentile: number; amount: number }>;
   sourceName: string;
   sourceUrl: string;
+  upperTailSurveyYear?: number;
+  upperTailReferenceDate?: string;
+  upperTailPublishedAt?: string;
+  upperTailSourceName?: string;
+  upperTailSourceUrl?: string;
 }
 
 export interface ManualNetWorthPoint {
