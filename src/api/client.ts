@@ -44,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.9.0';
+const backupAppVersion = '0.9.1';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -446,7 +446,7 @@ async function settings(): Promise<AppSettings> {
 async function updateSettings(input: AppSettings): Promise<AppSettings> {
   const data = await localData();
   const next = {
-    appTitle: input.appTitle.trim() || settingsDefaults.appTitle,
+    appTitle: input.appTitle.trim() ? input.appTitle : settingsDefaults.appTitle,
     appSubtitle: input.appSubtitle.trim() || settingsDefaults.appSubtitle,
     chartGridXMonths: Math.max(1, Math.round(Number(input.chartGridXMonths || 12))),
     chartGridYWon: Math.max(100_000_000, Math.round(Number(input.chartGridYWon || 100_000_000) / 100_000_000) * 100_000_000),

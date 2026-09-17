@@ -2,6 +2,8 @@ import dayjs from 'dayjs';
 import { LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings, Moon, Sun, MoreHorizontal, X, BookOpen } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Area,
+  ComposedChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -30,15 +32,15 @@ const tabIcons = [LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, 
 const pieColors = ['#ff625a', '#ff944d', '#ffd23f', '#bde93f', '#64cf6b', '#5fded0', '#58a7f7', '#8b8cf6', '#c17bff', '#ff78a8'];
 const incomeColor = '#2f8cff';
 const expenseColor = '#ff5a52';
-const netWorthColor = '#18a667';
-const debtRatioColor = '#ff8a42';
+const netWorthColor = '#279b80';
+const debtRatioColor = '#bc9270';
 const pensionReturnColor = '#ff8f8a';
 const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   kospi: '#2f8cff',
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.9.0';
+const appVersion = 'v0.9.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -736,7 +738,8 @@ export default function App() {
                 </div>
                 <div className="h-72">
                   <ResponsiveContainer>
-                    <LineChart data={netWorthRows}>
+                    <ComposedChart data={netWorthRows} margin={{ top: 14, right: 4, bottom: 8, left: 0 }}>
+                      <defs><linearGradient id="wealth-wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={netWorthColor} stopOpacity={0.16} /><stop offset="100%" stopColor={netWorthColor} stopOpacity={0.01} /></linearGradient></defs>
                       <CartesianGrid stroke="transparent" />
                       <XAxis
                         dataKey="xValue"
@@ -766,12 +769,13 @@ export default function App() {
                       {netWorthYTicks.map((tick) => (
                         <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
-                      <Tooltip content={<NetWorthTooltip mode={netWorthMode} />} />
-                      <Line yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} strokeWidth={3} name="순자산" dot={{ r: 2 }} activeDot={{ r: 8 }} />
-                      <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={2.5} name="부채율" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
-                    </LineChart>
+                      <Tooltip cursor={{ stroke: '#9ca3af', strokeDasharray: '3 5' }} content={<NetWorthTooltip mode={netWorthMode} />} />
+                      <Area yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} fill="url(#wealth-wash)" strokeWidth={3} name="순자산" dot={{ r: 2, fill: netWorthColor }} activeDot={{ r: 6, strokeWidth: 3, stroke: 'var(--panel)', fill: netWorthColor }} />
+                      <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={1.75} strokeDasharray="5 5" name="부채율" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
+                <div className="chart-key"><span><i style={{ background: netWorthColor }} />순자산 <small>왼쪽 축</small></span><span><i className="dashed" style={{ borderColor: debtRatioColor }} />부채율 <small>오른쪽 축</small></span></div>
                 {netWorthMode === 'yearly' && annualNetWorthSummary.length > 0 && (
                   <div className="-mx-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
                     <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
@@ -863,7 +867,8 @@ export default function App() {
                 {pensionChartView === 'assets' && pensionRows.length > 0 ? (
                   <div className="h-72">
                     <ResponsiveContainer>
-                      <LineChart data={pensionRows}>
+                      <ComposedChart data={pensionRows} margin={{ top: 14, right: 4, bottom: 8, left: 0 }}>
+                        <defs><linearGradient id="pension-wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={netWorthColor} stopOpacity={0.14} /><stop offset="100%" stopColor={netWorthColor} stopOpacity={0.01} /></linearGradient></defs>
                         <CartesianGrid stroke="transparent" />
                         <XAxis
                           dataKey="xValue"
@@ -880,11 +885,11 @@ export default function App() {
                         <YAxis yAxisId="returnRate" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: pensionReturnColor }} width={48} />
                         {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
-                        <Tooltip content={<PensionTooltip />} />
+                        <Tooltip cursor={{ stroke: '#9ca3af', strokeDasharray: '3 5' }} content={<PensionTooltip />} />
                         <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="납입금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
-                        <Line yAxisId="amount" type="monotone" dataKey="total" stroke="#18a667" strokeWidth={3} name="총액" dot={{ r: 2 }} activeDot={{ r: 8 }} />
+                        <Area yAxisId="amount" type="monotone" dataKey="total" fill="url(#pension-wash)" stroke={netWorthColor} strokeWidth={3} name="총액" dot={{ r: 2, fill: netWorthColor }} activeDot={{ r: 6, stroke: 'var(--panel)', strokeWidth: 3, fill: netWorthColor }} />
                         <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
-                      </LineChart>
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 ) : pensionChartView === 'comparison' && pensionComparison.length > 1 ? (
@@ -1932,7 +1937,8 @@ function SettingsForm({
       <div className="space-y-4">
         <label className="block text-sm font-medium">
           이름
-          <input
+          <textarea
+            rows={2}
             className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950"
             value={appTitle}
             onChange={(event) => setAppTitle(event.target.value)}

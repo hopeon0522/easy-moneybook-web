@@ -7,6 +7,12 @@
 .desktop-sidebar { position: fixed; inset: 0 auto 0 0; width: 224px; z-index: 30; background: var(--panel); border-right: 1px solid var(--line); padding: 30px 18px; display: flex; flex-direction: column; }
 .sidebar-brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
 .sidebar-brand svg { flex-shrink: 0; color: #ed6b62; }
+.sidebar-brand>span { white-space: break-spaces; min-width: 0; }
+.chart-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; padding-top: 10px; font-size: 11px; color: var(--muted); }
+.chart-key>span { display: inline-flex; align-items: center; gap: 7px; }
+.chart-key i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; }
+.chart-key i.dashed { height: 0; border-top: 2px dashed; }
+.chart-key small { font-size: 10px; opacity: .7; }
 .sidebar-subtitle { font-size: 11px; line-height: 1.8; color: var(--muted); margin: 10px 0 32px; }
 .sidebar-link { width: 100%; display: flex; align-items: center; gap: 13px; text-align: left; height: 45px; border-radius: 6px; padding: 0 13px; color: var(--muted); font-size: 13px; font-weight: 500; margin: 4px 0; transition: background 150ms, color 150ms; }
 .sidebar-link:hover { background: var(--canvas); color: var(--text); }
