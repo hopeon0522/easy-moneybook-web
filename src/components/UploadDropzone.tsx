@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Upload } from 'lucide-react';
 
 interface UploadDropzoneProps {
   onUpload: (file: File) => Promise<void>;
@@ -48,7 +49,7 @@ export function UploadDropzone({ onUpload, compact = false }: UploadDropzoneProp
           accept=".xlsx"
           onChange={(event) => void handleFile(event.target.files?.[0])}
         />
-        <span aria-hidden="true">⬆</span>
+        <Upload size={17} aria-hidden="true" />
         <span>업로드</span>
       </label>
     );

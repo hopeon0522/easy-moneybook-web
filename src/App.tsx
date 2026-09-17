@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings, Moon, Sun, MoreHorizontal, X, BookOpen } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
@@ -25,6 +26,7 @@ import { AppSettings, AssetKind, ManualNetWorthPoint, MarketBenchmarkData, Marke
 import { formatMoney } from './utils/format';
 
 const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
+const tabIcons = [LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings];
 const pieColors = ['#ff625a', '#ff944d', '#ffd23f', '#bde93f', '#64cf6b', '#5fded0', '#58a7f7', '#8b8cf6', '#c17bff', '#ff78a8'];
 const incomeColor = '#2f8cff';
 const expenseColor = '#ff5a52';
@@ -36,7 +38,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.8.1';
+const appVersion = 'v0.9.0 preview';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -376,6 +378,7 @@ function ActivePieSector(props: {
 
 export default function App() {
   const [tab, setTab] = useState<(typeof tabs)[number]>('대시보드');
+  const [moreOpen, setMoreOpen] = useState(false);
   const [dark, setDark] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [search, setSearch] = useState('');
@@ -585,46 +588,47 @@ export default function App() {
 
   return (
     <div className={dark ? 'dark' : ''}>
-      <div className="min-h-screen bg-[#f6f6f8] text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50">
-        <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+      <div className="moneybook-shell min-h-screen bg-[#f6f6f8] text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50">
+        <aside className="desktop-sidebar">
+          <div className="sidebar-brand"><BookOpen size={25} /><span>{settings.data?.appTitle ?? 'EasyMoneyBook Web'}</span></div>
+          <p className="sidebar-subtitle">{settings.data?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간'}</p>
+          <nav aria-label="주 메뉴">
+            {tabs.map((item, index) => {
+              const Icon = tabIcons[index];
+              return <button key={item} aria-current={tab === item ? 'page' : undefined} className={`sidebar-link ${tab === item ? 'is-active' : ''}`} onClick={() => { setTab(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Icon size={19} strokeWidth={1.7} /><span>{item}</span></button>;
+            })}
+          </nav>
+          <div className="sidebar-footer"><span className="status-dot" />내 브라우저에 보관<span>{appVersion}</span></div>
+        </aside>
+        <header className="app-header sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold tracking-normal">{settings.data?.appTitle ?? 'EasyMoneyBook Web'}</h1>
-                  <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300">{appVersion}</span>
+                  <h1 className="text-lg font-semibold tracking-normal">{tab}</h1>
+                  <span className="header-version text-[10px] text-zinc-400">{appVersion}</span>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{settings.data?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간'}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{dashboard.data?.summary.latestPeriod ? `${dashboard.data.summary.latestPeriod.replace('-', '. ')} 기준` : '나의 자산 기록'}</p>
               </div>
               <div className="flex items-center gap-2">
                 <UploadDropzone onUpload={upload} compact />
-                <button className="h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200" onClick={() => setDark((value) => !value)}>
-                  {dark ? '라이트모드' : '다크모드'}
+                <button title={dark ? '라이트모드' : '다크모드'} aria-label={dark ? '라이트모드' : '다크모드'} className="theme-button" onClick={() => setDark((value) => !value)}>
+                  {dark ? <Sun size={19} /> : <Moon size={19} />}
                 </button>
               </div>
             </div>
-            <nav className="flex gap-1 overflow-auto rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
-              {tabs.map((item) => (
-                <button
-                  key={item}
-                  className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    tab === item
-                      ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950 dark:text-[#ff817b]'
-                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-                  }`}
-                  onClick={() => {
-                    setTab(item);
-                    if (item === '대시보드') window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  {item}
-                </button>
-              ))}
-            </nav>
           </div>
         </header>
+        <nav className="mobile-navigation" aria-label="모바일 메뉴">
+          {(['대시보드', '거래내역', '자산', '연금저축'] as const).map((item) => {
+            const Icon = tabIcons[tabs.indexOf(item)];
+            return <button key={item} aria-current={tab === item ? 'page' : undefined} className={tab === item ? 'is-active' : ''} onClick={() => { setTab(item); setMoreOpen(false); window.scrollTo({ top: 0 }); }}><Icon size={21} /><span>{item}</span></button>;
+          })}
+          <button aria-expanded={moreOpen} aria-label="더보기" className={moreOpen || !['대시보드', '거래내역', '자산', '연금저축'].includes(tab) ? 'is-active' : ''} onClick={() => setMoreOpen(!moreOpen)}>{moreOpen ? <X size={21} /> : <MoreHorizontal size={21} />}<span>더보기</span></button>
+        </nav>
+        {moreOpen && <div className="mobile-more"><button className="more-backdrop" aria-label="메뉴 닫기" onClick={() => setMoreOpen(false)} /><nav aria-label="추가 메뉴">{tabs.filter(item => !['대시보드', '거래내역', '자산', '연금저축'].includes(item)).map(item => { const Icon = tabIcons[tabs.indexOf(item)]; return <button key={item} onClick={() => { setTab(item); setMoreOpen(false); window.scrollTo({ top: 0 }); }}><Icon size={20} />{item}</button>; })}</nav></div>}
 
-        <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        <main className="app-main mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           {!dashboard.loading && !dashboard.data?.summary.latestPeriod && (
             <section className="mb-5 flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
               <div>
@@ -658,17 +662,18 @@ export default function App() {
             </section>
           )}
           {tab === '대시보드' && (
-            <div className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <div className="dashboard-layout">
+              <section className="wealth-overview">
+                <div className="wealth-headline"><span>누적 순자산</span><strong>{formatMoney(dashboard.data?.summary.netWorth ?? 0)}</strong><small>{dashboard.data?.summary.latestPeriod ? `${dashboard.data.summary.latestPeriod.replace('-', '. ')} 기준` : '데이터 없음'}</small></div>
+                <div className="wealth-breakdown"><div><span>총자산</span><strong>{formatMoney(dashboard.data?.summary.totalAssets ?? 0)}</strong></div><div><span>부채</span><strong className="liability-value">{formatMoney(dashboard.data?.summary.liabilities ?? 0)}</strong></div></div>
+              </section>
+              <div className="monthly-summary grid gap-4 md:grid-cols-3">
                 <StatCard label={`최근 월 수입 (${shortPeriod(dashboard.data?.summary.latestPeriod)})`} value={formatMoney(dashboard.data?.summary.monthIncome ?? 0)} tone="blue" />
                 <StatCard label={`최근 월 지출 (${shortPeriod(dashboard.data?.summary.latestPeriod)})`} value={formatMoney(dashboard.data?.summary.monthExpense ?? 0)} tone="red" />
                 <StatCard label={`최근 월 순수익 (${shortPeriod(dashboard.data?.summary.latestPeriod)})`} value={formatMoney(dashboard.data?.summary.monthNet ?? 0)} tone="green" />
-                <StatCard label="총자산" value={formatMoney(dashboard.data?.summary.totalAssets ?? 0)} />
-                <StatCard label="부채" value={formatMoney(dashboard.data?.summary.liabilities ?? 0)} tone="red" />
-                <StatCard label="순자산" value={formatMoney(dashboard.data?.summary.netWorth ?? 0)} tone="green" />
               </div>
 
-              <div className="grid gap-5 lg:grid-cols-2">
+              <div className="spending-charts grid gap-5 xl:grid-cols-2">
                 <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-sm font-semibold">카테고리별 지출</h2>
@@ -721,7 +726,7 @@ export default function App() {
                 </section>
               </div>
 
-              <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <section className="networth-panel rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold">{netWorthMode === 'monthly' ? '월별' : '연별'} 순자산 변화</h2>
                   <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">

@@ -13,7 +13,7 @@ export function StatCard({ label, value, tone = 'default' }: StatCardProps) {
   }[tone];
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="stat-summary rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{label}</div>
       <div className={`mt-2 text-lg font-semibold tracking-normal xl:text-xl ${toneClass}`}>{value}</div>
     </div>
