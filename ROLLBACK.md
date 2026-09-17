@@ -15,4 +15,4 @@ To restore the public site later, create a new commit with the baseline tree and
 
 Browser IndexedDB data is separate from these filesystem backups. Before deploying or testing imports with real data, use Settings > full data backup in the browser containing the current records. Keep that dedicated backup locally. This UI revision does not change the API client, parser, storage schema or calculation utilities.
 
-The UI preview runs on a different localhost origin and does not automatically contain the data saved on GitHub Pages. Production remains on v0.8.1 until deployment.
+Version 0.9.0 uses the same IndexedDB database, store and key as 0.8.1. LocalData.version and backup formatVersion remain 1. Backup appVersion is informational only; both versions can read this format. No data migration is required. Localhost previews use a separate origin and do not automatically contain GitHub Pages data.
