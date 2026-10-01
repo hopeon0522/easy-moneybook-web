@@ -45,7 +45,7 @@
 .dashboard-layout>.networth-panel { order: 2; }
 .dashboard-layout>section:not(.wealth-overview):not(.networth-panel):not(.cashflow-panel) { order: 2; }
 .cashflow-scroll { max-height: 360px; overflow: auto; }
-.cashflow-table { border-collapse: separate; border-spacing: 0; min-width: 460px; }
+.cashflow-table { border-collapse: separate; border-spacing: 0; min-width: 620px; }
 .cashflow-table thead { position: sticky; top: 0; z-index: 1; background: var(--panel); }
 .cashflow-table th, .cashflow-table td { padding: 11px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .cashflow-table tbody th { font-weight: 500; }
