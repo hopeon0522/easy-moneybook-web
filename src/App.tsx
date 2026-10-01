@@ -40,7 +40,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.9.1';
+const appVersion = 'v0.9.2';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -668,6 +668,26 @@ export default function App() {
               <section className="wealth-overview">
                 <div className="wealth-headline"><span>누적 순자산</span><strong>{formatMoney(dashboard.data?.summary.netWorth ?? 0)}</strong><small>{dashboard.data?.summary.latestPeriod ? `${dashboard.data.summary.latestPeriod.replace('-', '. ')} 기준` : '데이터 없음'}</small></div>
                 <div className="wealth-breakdown"><div><span>총자산</span><strong>{formatMoney(dashboard.data?.summary.totalAssets ?? 0)}</strong></div><div><span>부채</span><strong className="liability-value">{formatMoney(dashboard.data?.summary.liabilities ?? 0)}</strong></div></div>
+              </section>
+              <section className="cashflow-panel rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2>최근 12개월 수입·지출</h2>
+                  {dashboard.data?.summary.latestPeriod && <span className="text-[11px] text-zinc-400">{dayjs(`${dashboard.data.summary.latestPeriod}-01`).subtract(11, 'month').format('YYYY.MM')} – {dayjs(`${dashboard.data.summary.latestPeriod}-01`).format('YYYY.MM')}</span>}
+                </div>
+                <div className="cashflow-scroll">
+                  <table className="cashflow-table w-full text-right">
+                    <thead><tr><th scope="col" className="text-left">월</th><th scope="col">수입</th><th scope="col">지출</th><th scope="col">순수익</th></tr></thead>
+                    <tbody>
+                      {(dashboard.data?.monthlyCashflow ?? []).map(row => <tr key={row.month}>
+                        <th scope="row" className="text-left">{dayjs(`${row.month}-01`).format('YYYY.MM')}</th>
+                        <td className="text-[#2f8cff] dark:text-blue-300">{row.hasData ? formatMoney(row.income) : '—'}</td>
+                        <td className="text-[#ff5a52] dark:text-[#ff817b]">{row.hasData ? formatMoney(row.expense) : '—'}</td>
+                        <td className={`font-semibold ${row.net < 0 ? 'text-[#ff5a52] dark:text-[#ff817b]' : 'text-emerald-600 dark:text-emerald-300'}`}>{row.hasData ? formatMoney(row.net) : '—'}</td>
+                      </tr>)}
+                      {!dashboard.data?.monthlyCashflow?.length && <tr><td colSpan={4} className="py-8 text-center text-zinc-400">{dashboard.loading ? '불러오는 중...' : '업로드된 월별 데이터가 없습니다.'}</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
               </section>
               <div className="monthly-summary grid gap-4 md:grid-cols-3">
                 <StatCard label={`최근 월 수입 (${shortPeriod(dashboard.data?.summary.latestPeriod)})`} value={formatMoney(dashboard.data?.summary.monthIncome ?? 0)} tone="blue" />

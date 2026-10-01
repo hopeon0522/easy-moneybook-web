@@ -44,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.9.1';
+const backupAppVersion = '0.9.2';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -402,12 +402,32 @@ async function dashboard(): Promise<DashboardData> {
       expense: rows.filter((row) => row.type === 'expense').reduce((sum, row) => sum - row.amount, 0)
     };
   });
+  const cashflowTotals = new Map<string, { income: number; expense: number }>();
+  if (latestPeriod) {
+    const firstPeriod = dayjs(`${latestPeriod}-01`).subtract(11, 'month').format('YYYY-MM');
+    for (const row of transactions) {
+      const month = row.date.slice(0, 7);
+      if (month < firstPeriod || month > latestPeriod) continue;
+      const totals = cashflowTotals.get(month) ?? { income: 0, expense: 0 };
+      if (row.type === 'income') totals.income += row.amount;
+      if (row.type === 'expense') totals.expense -= row.amount;
+      cashflowTotals.set(month, totals);
+    }
+  }
+  const monthlyCashflow = latestPeriod ? Array.from({ length: 12 }, (_, index) => {
+    const month = dayjs(`${latestPeriod}-01`).subtract(index, 'month').format('YYYY-MM');
+    const totals = cashflowTotals.get(month);
+    const income = totals?.income ?? 0;
+    const expense = totals?.expense ?? 0;
+    return { month, income, expense, net: income - expense, hasData: Boolean(totals) };
+  }) : [];
   const recent = [...transactions].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 20);
   return {
     summary: { latestPeriod, monthIncome, monthExpense, monthNet: monthIncome - monthExpense, totalAssets, liabilities, netWorth },
     recent,
     categoryPie,
     monthlyBars,
+    monthlyCashflow,
     assetLine,
     assetLineYearly: yearlyRows(assetLine),
     debtRatioLine,

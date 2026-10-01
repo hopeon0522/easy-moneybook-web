@@ -41,8 +41,15 @@
 .stat-summary { border: 0; border-radius: 0; background: transparent; padding: 22px 24px; }
 .stat-summary+.stat-summary { border-left: 1px solid var(--line); }
 .dashboard-layout>.spending-charts { order: 4; }
-.dashboard-layout>.networth-panel { order: 1; }
-.dashboard-layout>section:not(.wealth-overview):not(.networth-panel) { order: 2; }
+.dashboard-layout>.cashflow-panel { order: 1; }
+.dashboard-layout>.networth-panel { order: 2; }
+.dashboard-layout>section:not(.wealth-overview):not(.networth-panel):not(.cashflow-panel) { order: 2; }
+.cashflow-scroll { max-height: 360px; overflow: auto; }
+.cashflow-table { border-collapse: separate; border-spacing: 0; min-width: 460px; }
+.cashflow-table thead { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.cashflow-table th, .cashflow-table td { padding: 11px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cashflow-table tbody th { font-weight: 500; }
+.cashflow-table tbody tr:last-child>* { border-bottom: 0; }
 .dashboard-layout>section:last-child { order: 5; }
 .app-main section.rounded-lg { border: 0; border-radius: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 24px; }
 .app-main h2 { font-size: 15px; font-weight: 650; }

@@ -31,6 +31,7 @@ export interface DashboardData {
   recent: Transaction[];
   categoryPie: Array<{ name: string; value: number }>;
   monthlyBars: Array<{ month: string; income: number; expense: number }>;
+  monthlyCashflow: Array<{ month: string; income: number; expense: number; net: number; hasData: boolean }>;
   assetLine: Array<{ month: string; netWorth: number; isManual?: number }>;
   assetLineYearly: Array<{ year: string; month?: string; netWorth: number; isManual?: number }>;
   debtRatioLine: Array<{ month: string; debtRatio: number }>;
