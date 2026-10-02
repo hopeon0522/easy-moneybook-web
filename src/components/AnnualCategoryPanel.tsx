@@ -29,12 +29,9 @@ function Amount({ value }: { value: number | null }) {
 
 function BarPercent({ x, y, width, height, value }: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; value?: unknown }) {
   const w = Number(width ?? 0);
-  const h = Math.abs(Number(height ?? 0));
-  if (!w || !h || !Number.isFinite(Number(value))) return null;
+  if (!w || !Number.isFinite(Number(value))) return null;
   const text = `${Number(value).toFixed(1)}%`;
-  const fontSize = Math.min(11, (w - 4) / (text.length * 0.62), h - 2);
-  if (fontSize <= 0) return null;
-  return <text x={Number(x) + w / 2} y={Number(y) + Number(height) / 2} textAnchor="middle" dominantBaseline="central" fontSize={fontSize} fontWeight={650} fill="#343741" pointerEvents="none">{text}</text>;
+  return <text x={Number(x) + w / 2} y={Math.min(Number(y), Number(y) + Number(height ?? 0)) - 7} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--muted)" pointerEvents="none">{text}</text>;
 }
 
 export function AnnualCategoryPanel({ data, type, loading, onSelect, onTypeChange }: { data?: AnnualCategoryData | null; type: 'income' | 'expense'; loading: boolean; onSelect: (name: string) => void; onTypeChange: (type: 'income' | 'expense') => void }) {
