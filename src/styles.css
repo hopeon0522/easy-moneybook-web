@@ -75,6 +75,8 @@
   .annual-category-table { table-layout: fixed; font-size: 9px !important; }
   .annual-category-table th, .annual-category-table td { padding: 12px 2px; white-space: normal; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
   .annual-category-table tr>:first-child { width: 9%; min-width: 0; }
+  .annual-category-table tr>:nth-last-child(2) { width: 9%; }
+  .annual-category-table tr>:last-child { width: 8%; }
   .annual-category-table tbody th button { gap: 4px; width: 100%; }
 }
 @media (min-width: 1100px) { .annual-category-table { font-size: 10px !important; } }
