@@ -50,6 +50,24 @@
 .cashflow-table th, .cashflow-table td { padding: 11px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .cashflow-table tbody th { font-weight: 500; }
 .cashflow-table tbody tr:last-child>* { border-bottom: 0; }
+.category-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding-bottom: 8px; }
+.category-view-toggle { display: flex; background: var(--line); padding: 3px; border-radius: 6px; }
+.category-view-toggle button { padding: 7px 18px; border-radius: 4px; font-size: 12px; color: var(--muted); }
+.category-view-toggle button.is-active { background: var(--panel); color: #d76b61; font-weight: 650; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
+.category-period-select { background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: 8px 12px; min-width: 130px; }
+.category-year-tooltip { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; box-shadow: 0 5px 20px rgb(0 0 0 / .1); font-size: 12px; }
+.category-year-tooltip p { margin: 5px 0; font-weight: 600; }
+.category-year-tooltip span { color: var(--muted); }
+.annual-category-scroll { overflow: auto; max-height: 620px; border-top: 1px solid var(--line); }
+.annual-category-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px !important; }
+.annual-category-table th, .annual-category-table td { padding: 13px 12px; white-space: nowrap; text-align: right; border-bottom: 1px solid var(--line); }
+.annual-category-table thead th { position: sticky; top: 0; background: var(--panel); z-index: 2; }
+.annual-category-table tr>:first-child { position: sticky; left: 0; text-align: left; min-width: 130px; background: var(--panel); z-index: 1; }
+.annual-category-table thead tr>:first-child { z-index: 3; }
+.annual-category-table tbody th button { display: flex; align-items: center; gap: 8px; text-align: left; font-weight: 500; color: var(--text); }
+.annual-category-table tbody th button span { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+.annual-category-table .annual-total, .annual-category-table tfoot { font-weight: 650; background: rgb(128 128 128 / .045); }
+.annual-category-table td:nth-last-child(2), .annual-category-table th:nth-last-child(2) { border-left: 1px solid var(--line); }
 .dashboard-layout>section:last-child { order: 5; }
 .app-main section.rounded-lg { border: 0; border-radius: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 24px; }
 .app-main h2 { font-size: 15px; font-weight: 650; }

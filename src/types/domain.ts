@@ -79,6 +79,14 @@ export interface CategoryExpenseData {
   rows: Array<{ name: string; value: number; signedValue: number }>;
 }
 
+export interface AnnualCategoryData {
+  year: string;
+  availableMonths: number[];
+  income: number;
+  expense: number;
+  rows: Array<{ name: string; months: number[]; total: number; average: number; percent: number }>;
+}
+
 export interface AppSettings {
   appTitle: string;
   appSubtitle: string;

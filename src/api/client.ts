@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { annualCategories } from '../utils/annualCategories';
 import {
   AppSettings,
   AssetKind,
@@ -44,7 +45,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.9.3';
+const backupAppVersion = '0.9.4';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -693,6 +694,7 @@ export const api = {
     return { ok: true as const };
   },
   replaceImport: (sourceFile: string, file: File) => importExcel(file, sourceFile),
+  annualCategories: async (year: string, type: 'income' | 'expense') => annualCategories(await allTransactions(), year, type),
   categoryExpense: async (period = '', type: 'income' | 'expense' = 'expense'): Promise<CategoryExpenseData> => {
     const transactions = await allTransactions();
     const periods = [...new Set(transactions.map((row) => row.date.slice(0, 7)).filter(Boolean))].sort().reverse();
