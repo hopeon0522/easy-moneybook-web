@@ -1,8 +1,41 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AnnualCategoryData } from '../types/domain';
 import { formatMoney } from '../utils/format';
 
 const colors = ['#f37870', '#eda46b', '#e7bf58', '#9dbc71', '#6fbd9b', '#69b9c8', '#77a7d9', '#a197cf', '#c291ba'];
+
+function Amount({ value }: { value: number | null }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    let previousWidth = -1;
+    const fit = () => {
+      const width = element.clientWidth;
+      if (width === previousWidth || width === 0) return;
+      previousWidth = width;
+      element.style.fontSize = '';
+      const base = parseFloat(getComputedStyle(element).fontSize);
+      if (element.scrollWidth > width) element.style.fontSize = `${base * (width - 1) / element.scrollWidth}px`;
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [value]);
+  return <span ref={ref} className="annual-number">{value === null ? '—' : value.toLocaleString('ko-KR')}</span>;
+}
+
+function BarPercent({ x, y, width, height, value }: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; value?: unknown }) {
+  const w = Number(width ?? 0);
+  const h = Math.abs(Number(height ?? 0));
+  if (!w || !h || !Number.isFinite(Number(value))) return null;
+  const text = `${Number(value).toFixed(1)}%`;
+  const fontSize = Math.min(11, (w - 4) / (text.length * 0.62), h - 2);
+  if (fontSize <= 0) return null;
+  return <text x={Number(x) + w / 2} y={Number(y) + Number(height) / 2} textAnchor="middle" dominantBaseline="central" fontSize={fontSize} fontWeight={650} fill="#343741" pointerEvents="none">{text}</text>;
+}
 
 export function AnnualCategoryPanel({ data, type, loading, onSelect, onTypeChange }: { data?: AnnualCategoryData | null; type: 'income' | 'expense'; loading: boolean; onSelect: (name: string) => void; onTypeChange: (type: 'income' | 'expense') => void }) {
   const rows = data?.rows ?? [];
@@ -18,16 +51,16 @@ export function AnnualCategoryPanel({ data, type, loading, onSelect, onTypeChang
         <XAxis type="category" dataKey="name" interval={0} angle={rows.length > 6 ? -35 : 0} textAnchor={rows.length > 6 ? 'end' : 'middle'} height={rows.length > 6 ? 65 : 35} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#92949d' }} tickFormatter={value => String(value).length > 7 ? `${String(value).slice(0, 6)}…` : String(value)} />
         <YAxis type="number" width={42} tickFormatter={value => `${Number(value).toFixed(0)}%`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#92949d' }} />
         <Tooltip cursor={{ fill: 'rgb(128 128 128 / .07)' }} content={({ active, payload }) => { const row = payload?.[0]?.payload as AnnualCategoryData['rows'][number] | undefined; return active && row ? <div className="category-year-tooltip"><strong>{row.name}</strong><p>{formatMoney(row.total)}</p><span>{row.percent.toFixed(1)}%</span></div> : null; }} />
-        <Bar dataKey="percent" isAnimationActive={false} maxBarSize={42} radius={[4, 4, 0, 0]} label={rows.length <= 12 ? { position: 'top', formatter: (value: unknown) => `${Number(value).toFixed(1)}%`, fontSize: 10, fill: '#92949d' } : false} onClick={entry => onSelect(String(entry.name))} className="cursor-pointer">{rows.map((row, index) => <Cell key={row.name} fill={colors[index % colors.length]} />)}</Bar>
+        <Bar dataKey="percent" isAnimationActive={false} maxBarSize={42} radius={[4, 4, 0, 0]} label={<BarPercent />} onClick={entry => onSelect(String(entry.name))} className="cursor-pointer">{rows.map((row, index) => <Cell key={row.name} fill={colors[index % colors.length]} />)}</Bar>
       </BarChart></ResponsiveContainer></div> : <p className="py-10 text-center text-sm text-zinc-400">{loading ? '불러오는 중...' : '해당 연도의 거래가 없습니다.'}</p>}
     </section>
     <section className="rounded-lg bg-white p-4 dark:bg-zinc-900">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2>분류별 월별 금액</h2><div className="category-view-toggle">{(['expense', 'income'] as const).map(mode => <button key={mode} aria-pressed={type === mode} className={type === mode ? 'is-active' : ''} onClick={() => onTypeChange(mode)}>{mode === 'expense' ? '지출' : '수입'}</button>)}</div></div>
       <p className="mb-3 text-[11px] text-zinc-400">원 단위 · 평균: 자료가 있는 {months.length}개월 기준</p>
       <div className="annual-category-scroll"><table className="annual-category-table"><thead><tr><th scope="col">분류</th>{totals.map((_, index) => <th key={index} scope="col">{index + 1}월</th>)}<th scope="col">Total</th><th scope="col">평균</th></tr></thead><tbody>
-        {rows.map((row, index) => <tr key={row.name}><th scope="row"><button onClick={() => onSelect(row.name)}><span style={{ backgroundColor: colors[index % colors.length] }} />{row.name}</button></th>{row.months.map((amount, month) => <td key={month} className={amount < 0 ? 'text-[#ff5a52]' : ''}>{months.includes(month) ? amount.toLocaleString('ko-KR') : '—'}</td>)}<td className="annual-total">{row.total.toLocaleString('ko-KR')}</td><td>{Math.round(row.average).toLocaleString('ko-KR')}</td></tr>)}
+        {rows.map((row, index) => <tr key={row.name}><th scope="row"><button onClick={() => onSelect(row.name)}><span style={{ backgroundColor: colors[index % colors.length] }} />{row.name}</button></th>{row.months.map((amount, month) => <td key={month} className={amount < 0 ? 'text-[#ff5a52]' : ''}><Amount value={months.includes(month) ? amount : null} /></td>)}<td className="annual-total"><Amount value={row.total} /></td><td><Amount value={Math.round(row.average)} /></td></tr>)}
         {!rows.length && <tr><td colSpan={15} className="text-center">{loading ? '불러오는 중...' : '표시할 데이터가 없습니다.'}</td></tr>}
-      </tbody>{rows.length > 0 && <tfoot><tr><th scope="row">합계</th>{totals.map((amount, month) => <td key={month}>{months.includes(month) ? amount.toLocaleString('ko-KR') : '—'}</td>)}<td>{total.toLocaleString('ko-KR')}</td><td>{Math.round(total / (months.length || 1)).toLocaleString('ko-KR')}</td></tr></tfoot>}</table></div>
+      </tbody>{rows.length > 0 && <tfoot><tr><th scope="row">합계</th>{totals.map((amount, month) => <td key={month}><Amount value={months.includes(month) ? amount : null} /></td>)}<td><Amount value={total} /></td><td><Amount value={Math.round(total / (months.length || 1))} /></td></tr></tfoot>}</table></div>
     </section>
   </>;
 }
