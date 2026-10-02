@@ -22,6 +22,7 @@ import {
 import { api } from './api/client';
 import { StatCard } from './components/StatCard';
 import { AnnualCategoryPanel } from './components/AnnualCategoryPanel';
+import { PeriodSelect } from './components/PeriodSelect';
 import { TransactionTable } from './components/TransactionTable';
 import { UploadDropzone } from './components/UploadDropzone';
 import { useAsync } from './hooks/useAsync';
@@ -41,7 +42,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#7c6ee6',
   sp500: '#18a667'
 };
-const appVersion = 'v0.9.4';
+const appVersion = 'v0.9.5';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -963,7 +964,7 @@ export default function App() {
 
           {tab === '거래내역' && (
             <div className="space-y-4">
-              <PeriodButtons periods={periodOptions} selected={effectivePeriod} onSelect={setSelectedPeriod} />
+              <PeriodSelect label="거래내역" periods={periodOptions} selected={effectivePeriod} onSelect={setSelectedPeriod} />
               <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="grid gap-3 md:grid-cols-6">
                   <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950 md:col-span-2" placeholder="전체 검색" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -995,12 +996,9 @@ export default function App() {
             <div className="space-y-4">
               <div className="category-toolbar">
                 <div className="category-view-toggle">{(['monthly', 'yearly'] as const).map(mode => <button key={mode} aria-pressed={categoryPeriodMode === mode} className={categoryPeriodMode === mode ? 'is-active' : ''} onClick={() => { setCategoryPeriodMode(mode); setSelectedCategory(''); }}>{mode === 'monthly' ? '월간' : '연간'}</button>)}</div>
-                <label className="flex items-center gap-2 text-xs text-zinc-500">{categoryPeriodMode === 'monthly' ? '월 선택' : '연도 선택'}
-                  {categoryPeriodMode === 'monthly' ? <select aria-label="카테고리 월 선택" className="category-period-select" value={effectivePeriod} disabled={!periodOptions.length} onChange={event => { setSelectedPeriod(event.target.value); setSelectedCategory(''); }}>{!periodOptions.length && <option value="">데이터 없음</option>}{periodOptions.map(period => <option key={period} value={period}>{period.replace('-', '년 ')}월</option>)}</select> : <select aria-label="카테고리 연도 선택" className="category-period-select" value={effectiveCategoryYear} disabled={!periodOptions.length} onChange={event => { setCategoryYear(event.target.value); setSelectedCategory(''); }}>{!periodOptions.length && <option value="">데이터 없음</option>}{[...new Set(periodOptions.map(period => period.slice(0, 4)))].map(year => <option key={year} value={year}>{year}년</option>)}</select>}
-                </label>
-                {categoryPeriodMode === 'yearly' && <div className="category-view-toggle">{(['expense', 'income'] as const).map(mode => <button key={mode} aria-pressed={categoryMode === mode} className={categoryMode === mode ? 'is-active' : ''} onClick={() => { setCategoryMode(mode); setSelectedCategory(''); }}>{mode === 'expense' ? '지출' : '수입'}</button>)}</div>}
+                <PeriodSelect label="카테고리" periods={periodOptions} selected={categoryPeriodMode === 'monthly' ? effectivePeriod : effectiveCategoryYear} yearly={categoryPeriodMode === 'yearly'} onSelect={value => { if (categoryPeriodMode === 'monthly') setSelectedPeriod(value); else setCategoryYear(value); setSelectedCategory(''); }} />
               </div>
-              {categoryPeriodMode === 'yearly' ? <AnnualCategoryPanel data={annualCategory.data} type={categoryMode} loading={annualCategory.loading} onSelect={setSelectedCategory} /> : <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              {categoryPeriodMode === 'yearly' ? <AnnualCategoryPanel data={annualCategory.data} type={categoryMode} loading={annualCategory.loading} onSelect={setSelectedCategory} onTypeChange={value => { setCategoryMode(value); setSelectedCategory(''); }} /> : <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold">
                     {effectivePeriod} 카테고리별 {categoryMode === 'expense' ? '지출' : '수입'}
@@ -1101,7 +1099,7 @@ export default function App() {
 
           {tab === '캘린더' && (
             <div className="space-y-4">
-              <PeriodButtons periods={periodOptions} selected={effectivePeriod} onSelect={setSelectedPeriod} />
+              <PeriodSelect label="캘린더" periods={periodOptions} selected={effectivePeriod} onSelect={setSelectedPeriod} />
               <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold">{effectivePeriod} 캘린더</h2>
@@ -1452,24 +1450,6 @@ function AssetProjection({
           </table>
         </div>
       </section>
-    </div>
-  );
-}
-
-function PeriodButtons({ periods, selected, onSelect }: { periods: string[]; selected: string; onSelect: (period: string) => void }) {
-  return (
-    <div className="flex gap-1 overflow-auto rounded-lg border border-zinc-200 bg-white p-1.5 dark:border-zinc-800 dark:bg-zinc-900">
-      {periods.map((period) => (
-        <button
-          key={period}
-          className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition ${
-            selected === period ? 'bg-[#ff5a52] text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
-          }`}
-          onClick={() => onSelect(period)}
-        >
-          {period}
-        </button>
-      ))}
     </div>
   );
 }

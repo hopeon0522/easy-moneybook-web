@@ -55,6 +55,9 @@
 .category-view-toggle button { padding: 7px 18px; border-radius: 4px; font-size: 12px; color: var(--muted); }
 .category-view-toggle button.is-active { background: var(--panel); color: #d76b61; font-weight: 650; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
 .category-period-select { background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: 8px 12px; min-width: 130px; }
+.period-select-group { display: flex; align-items: center; gap: 8px; }
+.period-select-group .category-period-select { min-width: 90px; border-radius: 6px; }
+.annual-category-chart { height: 260px; width: 100%; }
 .category-year-tooltip { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; box-shadow: 0 5px 20px rgb(0 0 0 / .1); font-size: 12px; }
 .category-year-tooltip p { margin: 5px 0; font-weight: 600; }
 .category-year-tooltip span { color: var(--muted); }
@@ -68,6 +71,15 @@
 .annual-category-table tbody th button span { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
 .annual-category-table .annual-total, .annual-category-table tfoot { font-weight: 650; background: rgb(128 128 128 / .045); }
 .annual-category-table td:nth-last-child(2), .annual-category-table th:nth-last-child(2) { border-left: 1px solid var(--line); }
+@media (min-width: 768px) {
+  .annual-category-table { table-layout: fixed; font-size: 9px !important; }
+  .annual-category-table th, .annual-category-table td { padding: 12px 2px; white-space: normal; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  .annual-category-table tr>:first-child { width: 9%; min-width: 0; }
+  .annual-category-table tbody th button { gap: 4px; width: 100%; }
+}
+@media (min-width: 1100px) { .annual-category-table { font-size: 10px !important; } }
+@media (min-width: 1400px) { .annual-category-table { font-size: 11px !important; } }
+@media (max-width: 767px) { .annual-category-table { min-width: 1150px; } .annual-category-chart { height: 240px; } }
 .dashboard-layout>section:last-child { order: 5; }
 .app-main section.rounded-lg { border: 0; border-radius: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 24px; }
 .app-main h2 { font-size: 15px; font-weight: 650; }
