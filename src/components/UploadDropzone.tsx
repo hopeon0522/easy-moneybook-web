@@ -26,10 +26,8 @@ export function UploadDropzone({ onUpload, compact = false }: UploadDropzoneProp
   if (compact) {
     return (
       <label
-        className={`inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 text-sm font-semibold transition ${
-          dragging
-            ? 'border-[#2f8cff] bg-blue-50 text-[#2f8cff] dark:bg-blue-950'
-            : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'
+        className={`upload-button inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-4 text-sm font-semibold transition ${
+          dragging ? 'is-dragging' : ''
         }`}
         title={message || '편한가계부 xlsx 백업 업로드'}
         onDragOver={(event) => {
@@ -50,17 +48,15 @@ export function UploadDropzone({ onUpload, compact = false }: UploadDropzoneProp
           onChange={(event) => void handleFile(event.target.files?.[0])}
         />
         <Upload size={17} aria-hidden="true" />
-        <span>업로드</span>
+        <span>엑셀 업로드</span>
       </label>
     );
   }
 
   return (
     <label
-      className={`flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition ${
-          dragging
-          ? 'border-[#2f8cff] bg-blue-50 text-[#2f8cff] dark:bg-blue-950'
-          : 'border-zinc-300 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
+      className={`upload-drop flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition ${
+          dragging ? 'is-dragging' : ''
       }`}
       onDragOver={(event) => {
         event.preventDefault();

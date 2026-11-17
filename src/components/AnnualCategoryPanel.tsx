@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import type { AnnualCategoryData } from '../types/domain';
 import { formatMoney } from '../utils/format';
 
-const colors = ['#f37870', '#eda46b', '#e7bf58', '#9dbc71', '#6fbd9b', '#69b9c8', '#77a7d9', '#a197cf', '#c291ba'];
+const colors = ['#24489b', '#3f86e0', '#22a3b8', '#7a5cc7', '#d08a2e', '#d4578a', '#5b9a4a', '#8fa3c0', '#b06ad9'];
 
 function Amount({ value }: { value: number | null }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -42,7 +42,7 @@ export function AnnualCategoryPanel({ data, type, loading, onSelect, onTypeChang
   return <>
     <section className="rounded-lg bg-white p-4 dark:bg-zinc-900">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2>{data?.year ? `${data.year}년 ` : ''}카테고리별 {type === 'expense' ? '지출' : '수입'} 비중</h2><span className="text-xs text-zinc-500">{rows.length}개 항목</span></div>
-      <div className="mb-5 flex flex-wrap gap-x-7 gap-y-3 text-sm"><span className="text-zinc-500">연 수입 <strong className="ml-2 text-[#2f8cff]">{formatMoney(data?.income ?? 0)}</strong></span><span className="text-zinc-500">연 지출 <strong className="ml-2 text-[#ff5a52]">{formatMoney(data?.expense ?? 0)}</strong></span><span className="text-zinc-500">연 순수익 <strong className="ml-2 text-emerald-600 dark:text-emerald-300">{formatMoney((data?.income ?? 0) - (data?.expense ?? 0))}</strong></span></div>
+      <div className="mb-5 flex flex-wrap gap-x-7 gap-y-3 text-sm"><span className="text-zinc-500">연 수입 <strong className="ml-2 text-income">{formatMoney(data?.income ?? 0)}</strong></span><span className="text-zinc-500">연 지출 <strong className="ml-2 text-expense">{formatMoney(data?.expense ?? 0)}</strong></span><span className="text-zinc-500">연 순수익 <strong className="ml-2 text-gain">{formatMoney((data?.income ?? 0) - (data?.expense ?? 0))}</strong></span></div>
       {rows.length ? <div className="annual-category-chart"><ResponsiveContainer><BarChart data={rows} margin={{ top: 24, right: 12, bottom: 12, left: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 6" />
         <XAxis type="category" dataKey="name" interval={0} angle={rows.length > 6 ? -35 : 0} textAnchor={rows.length > 6 ? 'end' : 'middle'} height={rows.length > 6 ? 65 : 35} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#92949d' }} tickFormatter={value => String(value).length > 7 ? `${String(value).slice(0, 6)}…` : String(value)} />
@@ -55,7 +55,7 @@ export function AnnualCategoryPanel({ data, type, loading, onSelect, onTypeChang
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2>분류별 월별 금액</h2><div className="category-view-toggle">{(['expense', 'income'] as const).map(mode => <button key={mode} aria-pressed={type === mode} className={type === mode ? 'is-active' : ''} onClick={() => onTypeChange(mode)}>{mode === 'expense' ? '지출' : '수입'}</button>)}</div></div>
       <p className="mb-3 text-[11px] text-zinc-400">원 단위 · 평균: 자료가 있는 {months.length}개월 기준</p>
       <div className="annual-category-scroll"><table className="annual-category-table"><thead><tr><th scope="col">분류</th>{totals.map((_, index) => <th key={index} scope="col">{index + 1}월</th>)}<th scope="col">Total</th><th scope="col">평균</th></tr></thead><tbody>
-        {rows.map((row, index) => <tr key={row.name}><th scope="row"><button onClick={() => onSelect(row.name)}><span style={{ backgroundColor: colors[index % colors.length] }} />{row.name}</button></th>{row.months.map((amount, month) => <td key={month} className={amount < 0 ? 'text-[#ff5a52]' : ''}><Amount value={months.includes(month) ? amount : null} /></td>)}<td className="annual-total"><Amount value={row.total} /></td><td><Amount value={Math.round(row.average)} /></td></tr>)}
+        {rows.map((row, index) => <tr key={row.name}><th scope="row"><button onClick={() => onSelect(row.name)}><span style={{ backgroundColor: colors[index % colors.length] }} />{row.name}</button></th>{row.months.map((amount, month) => <td key={month} className={amount < 0 ? 'text-expense' : ''}><Amount value={months.includes(month) ? amount : null} /></td>)}<td className="annual-total"><Amount value={row.total} /></td><td><Amount value={Math.round(row.average)} /></td></tr>)}
         {!rows.length && <tr><td colSpan={15} className="text-center">{loading ? '불러오는 중...' : '표시할 데이터가 없습니다.'}</td></tr>}
       </tbody>{rows.length > 0 && <tfoot><tr><th scope="row">합계</th>{totals.map((amount, month) => <td key={month}><Amount value={months.includes(month) ? amount : null} /></td>)}<td><Amount value={total} /></td><td><Amount value={Math.round(total / (months.length || 1))} /></td></tr></tfoot>}</table></div>
     </section>

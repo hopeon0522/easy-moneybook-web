@@ -2,17 +2,19 @@
 
 SCRIPT_DIR="${0:A:h}"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-RUNTIME_DIR="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies"
+LEGACY_RUNTIME_DIR="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies"
 LOG_DIR="$PROJECT_DIR/.easy-moneybook-runtime"
 URL="http://127.0.0.1:5173/"
 
-export PATH="$RUNTIME_DIR/node/bin:$RUNTIME_DIR/bin/override:$RUNTIME_DIR/bin/fallback:$RUNTIME_DIR/bin:$PATH"
+# 시스템 Node(Homebrew/nvm)를 우선 사용하고, 없으면 예전 번들 런타임을 마지막 대안으로 사용합니다.
+[ -s "$HOME/.nvm/nvm.sh" ] && source "$HOME/.nvm/nvm.sh" >/dev/null 2>&1
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/Library/pnpm:$PATH:$LEGACY_RUNTIME_DIR/node/bin:$LEGACY_RUNTIME_DIR/bin"
 
 mkdir -p "$LOG_DIR"
 cd "$PROJECT_DIR" || exit 1
 
 if ! command -v pnpm >/dev/null 2>&1; then
-  osascript -e 'display dialog "pnpm을 찾을 수 없습니다. Codex 런타임이 설치된 상태에서 다시 실행해 주세요." buttons {"확인"} default button "확인"'
+  osascript -e 'display dialog "pnpm을 찾을 수 없습니다. 터미널에서 brew install node 후 npm install -g pnpm 을 실행해 주세요." buttons {"확인"} default button "확인"'
   exit 1
 fi
 

@@ -1,6 +1,6 @@
 # EasyMoneyBook Web
 
-편한가계부 Android 앱에서 백업한 Excel(`.xlsx`) 파일을 그대로 업로드해서 웹에서 조회하고 분석하는 앱입니다.
+편한가계부 Android 앱에서 백업한 Excel(`.xlsx`) 파일을 업로드해 순자산·자산 구성·현금흐름·연금을 분석하는 개인 자산관리 웹앱입니다. 모든 데이터는 브라우저(IndexedDB)에만 저장됩니다.
 
 ## Stack
 
@@ -21,11 +21,7 @@ pnpm dev
 - Frontend: http://127.0.0.1:5173
 - Backend: http://127.0.0.1:4000
 
-이 Codex 환경에서는 번들 Node를 사용했습니다.
-
-```bash
-export PATH=/Users/sangbin_park/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:/Users/sangbin_park/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin:$PATH
-```
+Node 22와 pnpm이 필요합니다 (`brew install node && npm install -g pnpm`).
 
 ## GitHub Upload Notes
 
@@ -62,6 +58,9 @@ git push -u origin main
 
 ## Current Features
 
+- 대시보드: 순자산(전월·1년 대비 증감, 24개월 추이), 자산 구성 비중, 저축률·월평균 지출·비상자금 커버리지·부채비율, 주요 보유 자산 (v0.11)
+- 네이비·슬레이트 디자인 시스템, 다크모드, 모바일 카드형 거래 목록 (v0.11)
+
 - 편한가계부 백업 원본 Excel 업로드
 - 컬럼명 자동 매핑
   - `날짜`, `일자`, `기간`, `Date` -> date
@@ -88,6 +87,10 @@ git push -u origin main
 - 156 transactions parsed
 - `기간` 컬럼 날짜/시간 보정 완료
 - 중복 `자산` 컬럼 중 첫 번째 계좌명 컬럼 사용
+
+## Backup
+
+배포 전에 `scripts/backup-release.sh <버전>`으로 GitHub 백업 브랜치(`backup/<버전>`)와 로컬 번들을 만듭니다. 되돌리는 방법은 `ROLLBACK.md`를 보세요.
 
 ## Next Iteration Candidates
 

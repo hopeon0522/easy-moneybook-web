@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings, Moon, Sun, MoreHorizontal, X, BookOpen } from 'lucide-react';
-import { type ComponentType, type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentType, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   ComposedChart,
@@ -25,24 +25,25 @@ import { AnnualCategoryPanel } from './components/AnnualCategoryPanel';
 import { PeriodSelect } from './components/PeriodSelect';
 import { TransactionTable } from './components/TransactionTable';
 import { UploadDropzone } from './components/UploadDropzone';
+import { WealthOverview } from './components/WealthOverview';
 import { useAsync } from './hooks/useAsync';
 import { AppSettings, AssetKind, ManualNetWorthPoint, MarketBenchmarkData, MarketBenchmarkKey, PensionSavingsData, WealthBenchmark } from './types/domain';
 import { formatMoney } from './utils/format';
 
 const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
 const tabIcons = [LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings];
-const pieColors = ['#ff625a', '#ff944d', '#ffd23f', '#bde93f', '#64cf6b', '#5fded0', '#58a7f7', '#8b8cf6', '#c17bff', '#ff78a8'];
-const incomeColor = '#2f8cff';
-const expenseColor = '#ff5a52';
-const netWorthColor = '#279b80';
-const debtRatioColor = '#bc9270';
-const pensionReturnColor = '#ff8f8a';
+const pieColors = ['#24489b', '#3f86e0', '#22a3b8', '#7a5cc7', '#d08a2e', '#d4578a', '#5b9a4a', '#8fa3c0', '#b06ad9', '#c9a227'];
+const incomeColor = '#3f86e0';
+const expenseColor = '#e5484d';
+const netWorthColor = '#2f5fc4';
+const debtRatioColor = '#d08a2e';
+const pensionReturnColor = '#a173e6';
 const benchmarkColors: Record<MarketBenchmarkKey, string> = {
-  kospi: '#2f8cff',
-  nasdaq100: '#7c6ee6',
-  sp500: '#18a667'
+  kospi: '#3b6fe0',
+  nasdaq100: '#a173e6',
+  sp500: '#22a3b8'
 };
-const appVersion = 'v0.10.0';
+const appVersion = 'v0.11.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -112,8 +113,8 @@ function categoryLabel(props: { name?: string; cx?: number; cy?: number; midAngl
 
 function dayTextClass(date: dayjs.Dayjs) {
   const key = date.format('YYYY-MM-DD');
-  if (koreanHolidays[key] || date.day() === 0) return 'text-[#ff5a52] dark:text-[#ff817b]';
-  if (date.day() === 6) return 'text-[#2f8cff] dark:text-blue-300';
+  if (koreanHolidays[key] || date.day() === 0) return 'text-expense';
+  if (date.day() === 6) return 'text-income';
   return '';
 }
 
@@ -362,7 +363,7 @@ function ActivePieSector(props: {
   endAngle?: number;
   fill?: string;
 }) {
-  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#ff625a' } = props;
+  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#24489b' } = props;
   const offset = 10;
   const x = cx + offset * Math.cos((-midAngle * Math.PI) / 180);
   const y = cy + offset * Math.sin((-midAngle * Math.PI) / 180);
@@ -597,10 +598,12 @@ export default function App() {
       };
     });
   }, [effectivePeriod, calendarTransactions.data]);
+  const calendarMaxExpense = Math.max(1, ...calendarCells.filter((cell) => cell.currentMonth).map((cell) => cell.totals.expense));
+  const todayKey = dayjs().format('YYYY-MM-DD');
 
   return (
     <div className={dark ? 'dark' : ''}>
-      <div className="moneybook-shell min-h-screen bg-[#f6f6f8] text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50">
+      <div className="moneybook-shell min-h-screen bg-[rgb(var(--c-canvas))] text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50">
         <aside className="desktop-sidebar">
           <div className="sidebar-brand"><BookOpen size={25} /><span>{settings.data?.appTitle ?? 'EasyMoneyBook Web'}</span></div>
           <p className="sidebar-subtitle">{settings.data?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간'}</p>
@@ -647,7 +650,7 @@ export default function App() {
                 <h2 className="text-base font-semibold">내 로컬 가계부 데이터 불러오기</h2>
                 <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">데이터는 이 브라우저에만 저장되며 GitHub나 외부 서버로 전송되지 않습니다.</p>
               </div>
-              <label className={`inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#ff5a52] px-4 text-sm font-semibold text-white ${localDataImporting ? 'pointer-events-none opacity-50' : ''}`}>
+              <label className={`inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white ${localDataImporting ? 'pointer-events-none opacity-50' : ''}`}>
                 {localDataImporting ? '불러오는 중...' : '데이터 파일 선택'}
                 <input
                   className="hidden"
@@ -675,10 +678,7 @@ export default function App() {
           )}
           {tab === '대시보드' && (
             <div className="dashboard-layout">
-              <section className="wealth-overview">
-                <div className="wealth-headline"><span>누적 순자산</span><strong>{formatMoney(dashboard.data?.summary.netWorth ?? 0)}</strong><small>{dashboard.data?.summary.latestPeriod ? `${dashboard.data.summary.latestPeriod.replace('-', '. ')} 기준` : '데이터 없음'}</small></div>
-                <div className="wealth-breakdown"><div><span>총자산</span><strong>{formatMoney(dashboard.data?.summary.totalAssets ?? 0)}</strong></div><div><span>부채</span><strong className="liability-value">{formatMoney(dashboard.data?.summary.liabilities ?? 0)}</strong></div></div>
-              </section>
+              <WealthOverview data={dashboard.data} assets={metadata.data?.assets} />
               <section className="cashflow-panel rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h2>최근 12개월 수입·지출·순자산</h2>
@@ -690,9 +690,9 @@ export default function App() {
                     <tbody>
                       {(dashboard.data?.monthlyCashflow ?? []).map(row => <tr key={row.month}>
                         <th scope="row" className="text-left">{dayjs(`${row.month}-01`).format('YYYY.MM')}</th>
-                        <td className="text-[#2f8cff] dark:text-blue-300">{row.hasData ? formatMoney(row.income) : '—'}</td>
-                        <td className="text-[#ff5a52] dark:text-[#ff817b]">{row.hasData ? formatMoney(row.expense) : '—'}</td>
-                        <td className={`font-semibold ${row.net < 0 ? 'text-[#ff5a52] dark:text-[#ff817b]' : 'text-emerald-600 dark:text-emerald-300'}`}>{row.hasData ? formatMoney(row.net) : '—'}</td>
+                        <td className="text-income">{row.hasData ? formatMoney(row.income) : '—'}</td>
+                        <td className="text-expense">{row.hasData ? formatMoney(row.expense) : '—'}</td>
+                        <td className={`font-semibold ${row.net < 0 ? 'text-expense' : 'text-gain'}`}>{row.hasData ? formatMoney(row.net) : '—'}</td>
                         <td className="font-semibold text-zinc-900 dark:text-zinc-100">{(() => {
                           const point = dashboard.data?.assetLine.find(point => point.month === row.month);
                           return point ? formatMoney(point.netWorth) : '—';
@@ -750,9 +750,9 @@ export default function App() {
                   <div className="h-72">
                     <ResponsiveContainer>
                       <BarChart data={dashboard.data?.monthlyBars ?? []}>
-                        <CartesianGrid stroke="#eeeeef" vertical={false} />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8b8b91' }} />
-                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 10000)}만`} tick={{ fontSize: 11, fill: '#8b8b91' }} />
+                        <CartesianGrid stroke="#e6e8ee" vertical={false} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a90a0' }} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 10000)}만`} tick={{ fontSize: 11, fill: '#8a90a0' }} />
                         <Tooltip formatter={(value) => formatMoney(Number(value))} />
                         <Bar dataKey="income" fill={incomeColor} name="수입" radius={[7, 7, 0, 0]} className="chart-hover" />
                         <Bar dataKey="expense" fill={expenseColor} name="지출" radius={[7, 7, 0, 0]} className="chart-hover" />
@@ -766,8 +766,8 @@ export default function App() {
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold">{netWorthMode === 'monthly' ? '월별' : '연별'} 순자산 변화</h2>
                   <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
-                    <button className={`rounded-md px-3 py-1.5 font-semibold ${netWorthMode === 'monthly' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setNetWorthMode('monthly')}>월간</button>
-                    <button className={`rounded-md px-3 py-1.5 font-semibold ${netWorthMode === 'yearly' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setNetWorthMode('yearly')}>연간</button>
+                    <button className={`rounded-md px-3 py-1.5 font-semibold ${netWorthMode === 'monthly' ? 'seg-active' : 'text-zinc-500'}`} onClick={() => setNetWorthMode('monthly')}>월간</button>
+                    <button className={`rounded-md px-3 py-1.5 font-semibold ${netWorthMode === 'yearly' ? 'seg-active' : 'text-zinc-500'}`} onClick={() => setNetWorthMode('yearly')}>연간</button>
                   </div>
                 </div>
                 <div className="h-72">
@@ -784,7 +784,7 @@ export default function App() {
                         tickFormatter={formatChartYear}
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 11, fill: '#9f9fa5' }}
+                        tick={{ fontSize: 11, fill: '#8a90a0' }}
                       />
                       <YAxis
                         yAxisId="netWorth"
@@ -793,15 +793,15 @@ export default function App() {
                         tickFormatter={(value) => formatCompactMoney(Number(value))}
                         ticks={netWorthYTicks}
                         domain={[netWorthYTicks[0] ?? 'auto', netWorthYTicks[netWorthYTicks.length - 1] ?? 'auto']}
-                        tick={{ fontSize: 10, fill: '#8b8b91' }}
+                        tick={{ fontSize: 10, fill: '#8a90a0' }}
                         width={92}
                       />
-                      <YAxis yAxisId="debtRatio" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={46} />
+                      <YAxis yAxisId="debtRatio" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8a90a0' }} width={46} />
                       {netWorthXTicks.map((tick) => (
-                        <ReferenceLine key={`x-${tick}`} x={tick} yAxisId="netWorth" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <ReferenceLine key={`x-${tick}`} x={tick} yAxisId="netWorth" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
                       {netWorthYTicks.map((tick) => (
-                        <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
                       <Tooltip cursor={{ stroke: '#9ca3af', strokeDasharray: '3 5' }} content={<NetWorthTooltip mode={netWorthMode} />} />
                       <Area yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} fill="url(#wealth-wash)" strokeWidth={3} name="순자산" dot={{ r: 2, fill: netWorthColor }} activeDot={{ r: 6, strokeWidth: 3, stroke: 'var(--panel)', fill: netWorthColor }} />
@@ -838,7 +838,7 @@ export default function App() {
                         </thead>
                         <tbody>
                           {[...annualNetWorthSummary].reverse().map((row) => {
-                            const changeClass = row.increase == null ? 'text-zinc-400' : row.increase >= 0 ? 'text-[#18a667]' : 'text-[#ff5a52]';
+                            const changeClass = row.increase == null ? 'text-zinc-400' : row.increase >= 0 ? 'text-gain' : 'text-expense';
                             return (
                               <tr key={row.month} className="border-t border-zinc-100 dark:border-zinc-800">
                                 <td className="px-4 py-3 font-medium">{dayjs(`${row.month}-01`).format('YYYY. MM.')}</td>
@@ -864,14 +864,14 @@ export default function App() {
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="text-sm font-semibold">{pensionChartMode === 'savings' ? '연금저축' : '퇴직연금'}</h2>
                     <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
-                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartView === 'assets' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartView('assets')}>기존 보기</button>
-                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartView === 'comparison' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartView('comparison')}>지수 비교</button>
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartView === 'assets' ? 'seg-active' : 'text-zinc-500'}`} onClick={() => setPensionChartView('assets')}>기존 보기</button>
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartView === 'comparison' ? 'seg-active' : 'text-zinc-500'}`} onClick={() => setPensionChartView('comparison')}>지수 비교</button>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
-                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'savings' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('savings')}>연금저축</button>
-                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'retirement' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('retirement')}>퇴직연금</button>
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'savings' ? 'seg-active' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('savings')}>연금저축</button>
+                      <button className={`rounded-md px-3 py-1.5 font-semibold ${pensionChartMode === 'retirement' ? 'seg-active' : 'text-zinc-500'}`} onClick={() => setPensionChartMode('retirement')}>퇴직연금</button>
                     </div>
                     {pensionChartView === 'comparison' && (
                       <div className="flex flex-col items-end gap-1.5">
@@ -892,8 +892,8 @@ export default function App() {
                       </div>
                     )}
                     {pensionChartView === 'assets' && pensionRows.length > 0 && <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs">
-                      <span className="text-zinc-500">납입금 <strong className="ml-1 text-[#2f8cff]">{formatMoney(pensionRows[pensionRows.length - 1].principal)}</strong></span>
-                      <span className="text-zinc-500">수익 <strong className={`ml-1 ${pensionRows[pensionRows.length - 1].profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(pensionRows[pensionRows.length - 1].profit)}</strong></span>
+                      <span className="text-zinc-500">납입금 <strong className="ml-1 text-income">{formatMoney(pensionRows[pensionRows.length - 1].principal)}</strong></span>
+                      <span className="text-zinc-500">수익 <strong className={`ml-1 ${pensionRows[pensionRows.length - 1].profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(pensionRows[pensionRows.length - 1].profit)}</strong></span>
                       <span className="text-zinc-500">총액 <strong className="ml-1 text-zinc-950 dark:text-white">{formatMoney(pensionRows[pensionRows.length - 1].total)}</strong></span>
                     </div>}
                   </div>
@@ -913,14 +913,14 @@ export default function App() {
                           tickFormatter={formatChartYear}
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9f9fa5' }}
+                          tick={{ fontSize: 11, fill: '#8a90a0' }}
                         />
-                        <YAxis yAxisId="amount" axisLine={false} tickLine={false} ticks={pensionYTicks} domain={[pensionYTicks[0] ?? 'auto', pensionYTicks[pensionYTicks.length - 1] ?? 'auto']} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={62} />
+                        <YAxis yAxisId="amount" axisLine={false} tickLine={false} ticks={pensionYTicks} domain={[pensionYTicks[0] ?? 'auto', pensionYTicks[pensionYTicks.length - 1] ?? 'auto']} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8a90a0' }} width={62} />
                         <YAxis yAxisId="returnRate" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: pensionReturnColor }} width={48} />
-                        {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
-                        {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />)}
+                        {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />)}
+                        {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />)}
                         <Tooltip cursor={{ stroke: '#9ca3af', strokeDasharray: '3 5' }} content={<PensionTooltip />} />
-                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke="#2f8cff" strokeWidth={2.5} name="납입금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
+                        <Line yAxisId="amount" type="monotone" dataKey="principal" stroke={incomeColor} strokeWidth={2.5} name="납입금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
                         <Area yAxisId="amount" type="monotone" dataKey="total" fill="url(#pension-wash)" stroke={netWorthColor} strokeWidth={3} name="총액" dot={{ r: 2, fill: netWorthColor }} activeDot={{ r: 6, stroke: 'var(--panel)', strokeWidth: 3, fill: netWorthColor }} />
                         <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
                       </ComposedChart>
@@ -931,9 +931,9 @@ export default function App() {
                     <div className="h-72">
                       <ResponsiveContainer>
                         <LineChart data={pensionComparison}>
-                          <CartesianGrid vertical={false} stroke="#d9d9de" strokeDasharray="4 7" strokeOpacity={0.55} />
-                          <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9f9fa5' }} />
-                          <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8b8b91' }} width={48} />
+                          <CartesianGrid vertical={false} stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />
+                          <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a90a0' }} />
+                          <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8a90a0' }} width={48} />
                           <ReferenceLine y={0} stroke="#a1a1aa" strokeOpacity={0.7} />
                           <Tooltip content={<PensionComparisonTooltip pensionLabel={pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'} enabledBenchmarks={pensionBenchmarks} />} />
                           <Line type="monotone" dataKey="pensionReturn" stroke={pensionReturnColor} strokeWidth={2.5} name="연금 TWR" dot={{ r: 2.5, fill: pensionReturnColor }} activeDot={{ r: 6 }} />
@@ -955,9 +955,12 @@ export default function App() {
                 )}
               </section>
 
-              <section>
-                <h2 className="mb-3 text-sm font-semibold">최근 거래 20건</h2>
-                <TransactionTable rows={recent} />
+              <section className="recent-card">
+                <div className="card-head">
+                  <h2>최근 거래</h2>
+                  <button className="link-button" onClick={() => { setTab('거래내역'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>전체 보기 →</button>
+                </div>
+                <TransactionTable rows={recent.slice(0, 8)} />
               </section>
             </div>
           )}
@@ -1005,7 +1008,7 @@ export default function App() {
                   </h2>
                   <div className="flex rounded-lg bg-zinc-100 p-1 text-xs dark:bg-zinc-800">
                     <button
-                      className={`rounded-md px-3 py-1.5 font-semibold ${categoryMode === 'expense' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`}
+                      className={`rounded-md px-3 py-1.5 font-semibold ${categoryMode === 'expense' ? 'seg-active' : 'text-zinc-500'}`}
                       onClick={() => {
                         setCategoryMode('expense');
                         setSelectedCategory('');
@@ -1014,7 +1017,7 @@ export default function App() {
                       지출
                     </button>
                     <button
-                      className={`rounded-md px-3 py-1.5 font-semibold ${categoryMode === 'income' ? 'bg-white text-[#ff5a52] shadow-sm dark:bg-zinc-950' : 'text-zinc-500'}`}
+                      className={`rounded-md px-3 py-1.5 font-semibold ${categoryMode === 'income' ? 'seg-active' : 'text-zinc-500'}`}
                       onClick={() => {
                         setCategoryMode('income');
                         setSelectedCategory('');
@@ -1025,13 +1028,13 @@ export default function App() {
                   </div>
                 </div>
                 <div className="mb-4 flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-lg bg-blue-50 px-3 py-1 font-semibold text-[#2f8cff] dark:bg-blue-950 dark:text-blue-200">
+                  <span className="rounded-lg bg-income-soft px-3 py-1 font-semibold text-income">
                     월 수입 {formatMoney(categoryExpense.data?.summary.income ?? 0)}
                   </span>
-                  <span className="rounded-lg bg-red-50 px-3 py-1 font-semibold text-[#ff5a52] dark:bg-rose-950 dark:text-rose-200">
+                  <span className="rounded-lg bg-expense-soft px-3 py-1 font-semibold text-expense">
                     월 지출 {formatMoney(categoryExpense.data?.summary.expense ?? 0)}
                   </span>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                  <span className="rounded-full bg-gain-soft px-3 py-1 font-semibold text-gain">
                     월 순수익 {formatMoney((categoryExpense.data?.summary.income ?? 0) - (categoryExpense.data?.summary.expense ?? 0))}
                   </span>
                 </div>
@@ -1067,11 +1070,11 @@ export default function App() {
                         {(categoryExpense.data?.rows ?? []).map((row, index) => (
                           <tr
                             key={row.name}
-                            className={`cursor-pointer border-b border-zinc-100 dark:border-zinc-800 ${selectedCategory === row.name ? 'bg-red-50/80 dark:bg-red-950/20' : ''}`}
+                            className={`cursor-pointer border-b border-zinc-100 dark:border-zinc-800 ${selectedCategory === row.name ? 'bg-accent-soft' : ''}`}
                             onClick={() => setSelectedCategory(row.name)}
                           >
                             <td className="px-3 py-2"><span className="mr-2 inline-block h-3 w-3 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />{row.name}</td>
-                            <td className={`px-3 py-2 text-right font-medium ${categoryMode === 'income' && row.signedValue < 0 ? 'text-[#ff5a52] dark:text-[#ff817b]' : ''}`}>
+                            <td className={`px-3 py-2 text-right font-medium ${categoryMode === 'income' && row.signedValue < 0 ? 'text-expense' : ''}`}>
                               {formatMoney(categoryMode === 'income' ? row.signedValue : row.value)}
                             </td>
                           </tr>
@@ -1104,20 +1107,20 @@ export default function App() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold">{effectivePeriod} 캘린더</h2>
                   <div className="flex gap-2 text-xs">
-                    <span className="rounded-lg bg-blue-50 px-3 py-1 font-semibold text-[#2f8cff] dark:bg-blue-950 dark:text-blue-200">수입 {formatMoney(calendarSummary.income)}</span>
-                    <span className="rounded-lg bg-red-50 px-3 py-1 font-semibold text-[#ff5a52] dark:bg-rose-950 dark:text-rose-200">지출 {formatMoney(calendarSummary.expense)}</span>
+                    <span className="rounded-lg bg-income-soft px-3 py-1 font-semibold text-income">수입 {formatMoney(calendarSummary.income)}</span>
+                    <span className="rounded-lg bg-expense-soft px-3 py-1 font-semibold text-expense">지출 {formatMoney(calendarSummary.expense)}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-zinc-200 text-xs dark:border-zinc-800">
+                <div className="cal-grid grid grid-cols-7 overflow-hidden text-xs">
                   {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
-                    <div key={day} className={`bg-zinc-50 p-2 text-center font-semibold dark:bg-zinc-950 ${day === '일' ? 'text-[#ff5a52] dark:text-[#ff817b]' : day === '토' ? 'text-[#2f8cff] dark:text-blue-300' : 'text-zinc-500'}`}>{day}</div>
+                    <div key={day} className={`cal-head p-2 text-center font-semibold ${day === '일' ? 'text-expense' : day === '토' ? 'text-income' : 'text-zinc-500'}`}>{day}</div>
                   ))}
                   {calendarCells.map((cell) => (
-                    <div key={cell.key} className={`min-h-28 border-t border-zinc-200 p-2 dark:border-zinc-800 ${cell.currentMonth ? 'bg-white dark:bg-zinc-950' : 'bg-zinc-50 text-zinc-400 dark:bg-zinc-900'}`}>
+                    <div key={cell.key} className={`cal-cell min-h-28 p-2 ${cell.currentMonth ? 'is-current' : 'is-outside'} ${cell.key === todayKey ? 'is-today' : ''}`} style={cell.currentMonth && cell.totals.expense > 0 ? ({ '--heat': `${Math.round(8 + (cell.totals.expense / calendarMaxExpense) * 30)}%` } as CSSProperties) : undefined}>
                       <div className={`mb-1 font-semibold ${dayTextClass(cell.date)}`}>{cell.date.date()}</div>
-                      {koreanHolidays[cell.key] && <div className="mb-1 truncate text-[11px] font-semibold text-[#ff5a52] dark:text-[#ff817b]">{koreanHolidays[cell.key]}</div>}
-                      {cell.totals.income > 0 && <div className="truncate font-medium text-[#2f8cff]">수 {formatMoney(cell.totals.income)}</div>}
-                      {cell.totals.expense > 0 && <div className="truncate font-medium text-[#ff5a52]">지 {formatMoney(cell.totals.expense)}</div>}
+                      {koreanHolidays[cell.key] && <div className="mb-1 truncate text-[11px] font-semibold text-expense">{koreanHolidays[cell.key]}</div>}
+                      {cell.totals.income > 0 && <div className="truncate font-medium text-income">수 {formatMoney(cell.totals.income)}</div>}
+                      {cell.totals.expense > 0 && <div className="truncate font-medium text-expense">지 {formatMoney(cell.totals.expense)}</div>}
                     </div>
                   ))}
                 </div>
@@ -1186,7 +1189,7 @@ export default function App() {
                         <td className="px-3 py-3"><ReplaceImport sourceFile={file.sourceFile} onDone={refreshAll} /></td>
                         <td className="px-3 py-3 text-right">
                           <button
-                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-[#ff5a52] dark:border-red-900"
+                            className="rounded-lg border border-expense/30 px-3 py-1.5 text-xs font-semibold text-expense hover:bg-expense-soft"
                             onClick={async () => {
                               if (!confirm(`${file.sourceFile} 데이터를 삭제할까요?`)) return;
                               await api.deleteImport(file.sourceFile);
@@ -1339,10 +1342,10 @@ function AssetProjection({
               />
               <span className="shrink-0 text-xs text-zinc-500">원</span>
             </div>
-            <span className="mt-1.5 block min-h-4 text-right text-[11px] font-medium text-[#18a667] dark:text-emerald-300">{formatKoreanMoney(base)}</span>
+            <span className="mt-1.5 block min-h-4 text-right text-[11px] font-medium text-gain">{formatKoreanMoney(base)}</span>
             {benchmark ? (
               <span className="mt-2 block border-t border-zinc-100 pt-2 text-right text-[10px] font-normal leading-5 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                <strong className="block text-[11px] font-semibold text-[#18a667] dark:text-emerald-300">대한민국 가구 기준 {formatEstimatedTopPercent(base, benchmark)}</strong>
+                <strong className="block text-[11px] font-semibold text-gain">대한민국 가구 기준 {formatEstimatedTopPercent(base, benchmark)}</strong>
                 <span className="block">평균 대비 {formatBenchmarkDifference(base, benchmark.averageNetWorth)} · 중앙값 대비 {formatBenchmarkDifference(base, benchmark.medianNetWorth)}</span>
                 <span className="block">{benchmark.referenceDate} 기준 · {benchmark.surveyYear}년 조사 · 가구·부동산 포함</span>
                 <span className="block">갱신 {dayjs(benchmark.refreshedAt).format('YYYY.MM.DD HH:mm')}</span>
@@ -1374,7 +1377,7 @@ function AssetProjection({
                 </label>
               ))}
             </div>
-            <p className={`mt-1.5 min-h-4 text-[10px] ${rateRangeError ? 'text-[#ff5a52]' : 'text-zinc-400'}`}>
+            <p className={`mt-1.5 min-h-4 text-[10px] ${rateRangeError ? 'text-expense' : 'text-zinc-400'}`}>
               {rateRangeError || `현재 ${scenarioRates.length}개 · 최대 20개`}
             </p>
           </fieldset>
@@ -1489,7 +1492,7 @@ function CategoryTooltip({
   const item = payload[0];
   const name = item.payload?.name ?? item.name ?? '';
   return (
-    <div className="rounded border-2 border-[#ff625a] bg-white px-3 py-2 text-sm shadow-[0_2px_8px_rgba(24,24,27,0.24)] dark:bg-zinc-950">
+    <div className="rounded border-2 border-accent bg-white px-3 py-2 text-sm shadow-[0_2px_8px_rgba(24,24,27,0.24)] dark:bg-zinc-950">
       <div className="text-zinc-500 dark:text-zinc-400">{name}</div>
       <div className="mt-1 text-base font-semibold text-zinc-700 dark:text-zinc-100">{formatMoney(Number(item.value ?? 0))}</div>
     </div>
@@ -1526,13 +1529,13 @@ function NetWorthTooltip({
       </div>
       <div className="mt-1 flex items-center justify-between gap-4">
         <span className="text-zinc-500 dark:text-zinc-400">{deltaLabel}</span>
-        <span className={`font-semibold ${hasDelta && delta < 0 ? 'text-[#ff5a52] dark:text-[#ff817b]' : 'text-emerald-600 dark:text-emerald-300'}`}>
+        <span className={`font-semibold ${hasDelta && delta < 0 ? 'text-expense' : 'text-gain'}`}>
           {hasDelta ? `${delta > 0 ? '+' : ''}${formatMoney(delta)}` : '-'}
         </span>
       </div>
       <div className="mt-1 flex items-center justify-between gap-4">
         <span className="text-zinc-500 dark:text-zinc-400">부채율</span>
-        <span className="font-semibold text-[#ff8a42] dark:text-orange-300">{debtRatio.toFixed(1)}%</span>
+        <span className="font-semibold text-warn">{debtRatio.toFixed(1)}%</span>
       </div>
     </div>
   );
@@ -1555,9 +1558,9 @@ function PensionTooltip({
   return (
     <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-950">
       <div className="mb-1 font-semibold text-zinc-700 dark:text-zinc-200">{typeof label === 'number' ? dayjs(label).format('YYYY-MM') : label}</div>
-      <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">납입금</span><strong className="text-[#2f8cff]">{formatMoney(Number(row?.principal ?? 0))}</strong></div>
-      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익</span><strong className={profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}>{formatMoney(profit)}</strong></div>
-      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익률</span><strong className="text-[#ff5a52] dark:text-[#ff817b]">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+      <div className="flex items-center justify-between gap-5"><span className="text-zinc-500">납입금</span><strong className="text-income">{formatMoney(Number(row?.principal ?? 0))}</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익</span><strong className={profit < 0 ? 'text-expense' : 'text-gain'}>{formatMoney(profit)}</strong></div>
+      <div className="mt-1 flex items-center justify-between gap-5"><span className="text-zinc-500">수익률</span><strong className="text-expense">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
       <div className="mt-1 flex items-center justify-between gap-5 border-t border-zinc-100 pt-1 dark:border-zinc-800"><span className="text-zinc-500">총액</span><strong>{formatMoney(Number(row?.total ?? 0))}</strong></div>
     </div>
   );
@@ -1603,8 +1606,8 @@ function PensionManager({
   return (
     <div className="space-y-4">
       <div className="flex gap-1 rounded-lg border border-zinc-200 bg-white p-1.5 dark:border-zinc-800 dark:bg-zinc-900">
-        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'savings' ? 'bg-[#ff5a52] text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('savings')}>연금저축</button>
-        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'retirement' ? 'bg-[#ff5a52] text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('retirement')}>퇴직연금</button>
+        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'savings' ? 'bg-accent text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('savings')}>연금저축</button>
+        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'retirement' ? 'bg-accent text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('retirement')}>퇴직연금</button>
       </div>
       {mode === 'savings' ? <PensionSavingsManager data={savingsData} onSaved={onSaved} /> : <RetirementPensionManager data={retirementData} onSaved={onSaved} />}
     </div>
@@ -1630,10 +1633,10 @@ function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | 
             <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">{data?.assetName ?? '삼성증권연금저축'} 거래에서 이체는 납입금, 수입·기타 거래는 수익으로 자동 반영됩니다.</p>
           </div>
           <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:grid-cols-4">
-            <div><span className="block text-zinc-500">누적 납입금</span><strong className="mt-1 block text-sm text-[#2f8cff]">{formatMoney(totals.principal)}</strong></div>
-            <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(totals.profit)}</strong></div>
+            <div><span className="block text-zinc-500">누적 납입금</span><strong className="mt-1 block text-sm text-income">{formatMoney(totals.principal)}</strong></div>
+            <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(totals.profit)}</strong></div>
             <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
-            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-[#ff5a52] dark:text-[#ff817b]">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-expense">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
           </div>
         </div>
 
@@ -1681,10 +1684,10 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
             <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">자산 및 순자산 계산과 분리된 수동 데이터입니다. 월 납입금과 계좌잔액을 저장하면 월 수익이 자동 계산됩니다.</p>
           </div>
           <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:grid-cols-4">
-            <div><span className="block text-zinc-500">누적 납입금</span><strong className="mt-1 block text-sm text-[#2f8cff]">{formatMoney(totals.principal)}</strong></div>
-            <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(totals.profit)}</strong></div>
+            <div><span className="block text-zinc-500">누적 납입금</span><strong className="mt-1 block text-sm text-income">{formatMoney(totals.principal)}</strong></div>
+            <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(totals.profit)}</strong></div>
             <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
-            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-[#ff5a52] dark:text-[#ff817b]">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-expense">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
           </div>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-[0.8fr_0.6fr_1.2fr_1.2fr_auto]">
@@ -1693,7 +1696,7 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
           <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label="월 납입금" placeholder="월 납입금" value={formatAccountingInput(contribution)} onChange={(event) => setContribution(event.target.value.replace(/[^\d.-]/g, ''))} />
           <input className="rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label="계좌잔액" placeholder="계좌잔액" value={formatAccountingInput(accountBalance)} onChange={(event) => setAccountBalance(event.target.value.replace(/[^\d.-]/g, ''))} />
           <button
-            className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             disabled={saving}
             onClick={async () => {
               setSaving(true);
@@ -1751,10 +1754,10 @@ function RetirementMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][
       <td className="px-3 py-3 font-semibold">{row.period}</td>
       <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label={`${row.period} 월 납입금`} value={formatAccountingInput(contribution)} onChange={(event) => setContribution(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
       <td className="px-3 py-3 text-right"><input className="w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950" inputMode="numeric" aria-label={`${row.period} 계좌잔액`} value={formatAccountingInput(accountBalance)} onChange={(event) => setAccountBalance(event.target.value.replace(/[^\d.-]/g, ''))} /></td>
-      <td className={`px-3 py-3 text-right font-semibold tabular-nums ${row.profit < 0 ? 'text-[#ff5a52]' : 'text-[#18a667]'}`}>{formatMoney(row.profit)}</td>
+      <td className={`px-3 py-3 text-right font-semibold tabular-nums ${row.profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(row.profit)}</td>
       <td className="px-3 py-3 text-right">
         <div className="flex justify-end gap-2">
-          <button className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-[#ff5a52] dark:border-red-900" disabled={saving} onClick={async () => { if (!window.confirm(`${row.period} 퇴직연금 데이터를 삭제할까요?`)) return; setSaving(true); try { await api.deleteRetirementMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>삭제</button>
+          <button className="rounded-lg border border-expense/30 px-3 py-2 text-xs font-semibold text-expense hover:bg-expense-soft" disabled={saving} onClick={async () => { if (!window.confirm(`${row.period} 퇴직연금 데이터를 삭제할까요?`)) return; setSaving(true); try { await api.deleteRetirementMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>삭제</button>
           <button className="rounded-lg bg-zinc-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-950" disabled={saving} onClick={async () => { setSaving(true); try { await api.updateRetirementMonth({ period: row.period, principal: Number(contribution || 0), balance: Number(accountBalance || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>
         </div>
       </td>
@@ -1781,7 +1784,7 @@ function PensionMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][num
       </td>
       <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatMoney(row.balance)}</td>
       <td className="px-3 py-3 text-right">
-        <input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-[#ff5a52]' : ''}`} inputMode="numeric" aria-label={`${row.period} 월 수익`} value={formatAccountingInput(profit)} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
+        <input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-expense' : ''}`} inputMode="numeric" aria-label={`${row.period} 월 수익`} value={formatAccountingInput(profit)} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
         {row.isManual && <div className="mt-1 text-[11px] text-zinc-400">자동 {formatMoney(row.autoProfit)}</div>}
       </td>
       <td className="px-3 py-3"><span className={`rounded px-2 py-1 text-xs font-semibold ${row.isManual ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>{row.isManual ? '수동' : '자동'}</span></td>
@@ -2029,12 +2032,12 @@ function SettingsForm({
             </label>
           </div>
           <label className="mt-3 flex items-center gap-2 text-sm font-medium">
-            <input className="h-4 w-4 accent-[#ff5a52]" type="checkbox" checked={usIndexDollarBasis} onChange={(event) => setUsIndexDollarBasis(event.target.checked)} />
+            <input className="h-4 w-4 accent-accent" type="checkbox" checked={usIndexDollarBasis} onChange={(event) => setUsIndexDollarBasis(event.target.checked)} />
             미국 지수 달러 기준
           </label>
         </div>
         <button
-          className="rounded-lg bg-[#ff5a52] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           disabled={saving}
           onClick={async () => {
             setSaving(true);
@@ -2068,7 +2071,7 @@ function SettingsForm({
             </p>
           </div>
           <button
-            className="rounded-lg bg-[#18a667] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             disabled={benchmarkRefreshing}
             onClick={async () => {
               setBenchmarkRefreshing(true);
@@ -2092,9 +2095,9 @@ function SettingsForm({
             {settings.wealthBenchmark.sourceCheckedAt && <p>공식 자료 확인 {dayjs(settings.wealthBenchmark.sourceCheckedAt).format('YYYY.MM.DD HH:mm:ss')}</p>}
             <p>마지막 갱신 {dayjs(settings.wealthBenchmark.refreshedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
             <div className="flex flex-col items-start gap-0.5">
-              <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
+              <a className="font-medium text-gain underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
               {settings.wealthBenchmark.upperTailSourceUrl && (
-                <a className="font-medium text-[#18a667] underline underline-offset-2" href={settings.wealthBenchmark.upperTailSourceUrl} target="_blank" rel="noreferrer">
+                <a className="font-medium text-gain underline underline-offset-2" href={settings.wealthBenchmark.upperTailSourceUrl} target="_blank" rel="noreferrer">
                   {settings.wealthBenchmark.upperTailSourceName}{settings.wealthBenchmark.upperTailPublishedAt ? ` · 발표 ${settings.wealthBenchmark.upperTailPublishedAt}` : ''}
                   {settings.wealthBenchmark.upperTailReferenceDate ? ` · 기준 ${settings.wealthBenchmark.upperTailReferenceDate}` : ''}
                 </a>
@@ -2138,7 +2141,7 @@ function SettingsForm({
               {marketRefreshing ? '불러오는 중...' : '최신 데이터 다시 불러오기'}
             </button>
             <a
-              className="inline-flex items-center rounded-lg bg-[#2f8cff] px-4 py-2 text-sm font-semibold text-white"
+              className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
               href="https://github.com/hopeon0522/easy-moneybook-web/actions/workflows/pages.yml"
               target="_blank"
               rel="noreferrer"
@@ -2217,7 +2220,7 @@ function SettingsForm({
             />
           </label>
         </div>
-        <p className="mt-2 text-xs text-[#ff5a52]">복원하면 이 브라우저의 현재 데이터가 백업 파일의 내용으로 교체됩니다.</p>
+        <p className="mt-2 text-xs text-expense">복원하면 이 브라우저의 현재 데이터가 백업 파일의 내용으로 교체됩니다.</p>
       </section>
 
       <details className="group border-t border-zinc-100 pt-5 dark:border-zinc-800">
@@ -2288,7 +2291,7 @@ function SettingsForm({
                     <td className="px-3 py-3 text-right font-semibold">{formatMoney(point.amount)}</td>
                     <td className="px-3 py-3 text-right">
                       <button
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-[#ff5a52] dark:border-red-900"
+                        className="rounded-lg border border-expense/30 px-3 py-1.5 text-xs font-semibold text-expense hover:bg-expense-soft"
                         onClick={async () => {
                           await api.deleteManualNetWorth(point.id);
                           await onManualChanged();
@@ -2360,7 +2363,7 @@ function AssetRow({
   return (
     <tr className="border-t border-zinc-100 dark:border-zinc-800">
       <td className="px-3 py-3 font-medium">{asset.name}</td>
-      <td className={`px-3 py-3 text-right font-semibold ${asset.currentValue < 0 ? 'text-[#ff5a52] dark:text-[#ff817b]' : 'text-[#2f8cff] dark:text-blue-300'}`}>
+      <td className={`px-3 py-3 text-right font-semibold ${asset.currentValue < 0 ? 'text-expense' : 'text-income'}`}>
         {formatMoney(asset.currentValue)}
       </td>
       <td className="px-3 py-3">

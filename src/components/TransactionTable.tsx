@@ -33,27 +33,27 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
   );
 
   return (
-    <div className="overflow-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <table className="min-w-full text-sm">
-        <thead className="bg-zinc-50 text-left text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+    <div className="tx-wrap overflow-auto">
+      <table className="tx-table min-w-full text-sm">
+        <thead>
           <tr>
-            <th className="px-3 py-3">{header('date', '날짜')}</th>
-            <th className="px-3 py-3">{header('type', '구분')}</th>
-            <th className="px-3 py-3">{header('category', '카테고리')}</th>
-            <th className="px-3 py-3">{header('asset', '자산')}</th>
-            <th className="px-3 py-3">{header('merchant', '내용')}</th>
-            <th className="px-3 py-3 text-right">{header('amount', '금액', 'text-right')}</th>
+            <th className="tx-date">{header('date', '날짜')}</th>
+            <th className="tx-type">{header('type', '구분')}</th>
+            <th className="tx-memo">{header('merchant', '내용')}</th>
+            <th className="tx-cat">{header('category', '카테고리')}</th>
+            <th className="tx-asset">{header('asset', '자산')}</th>
+            <th className="tx-amount text-right">{header('amount', '금액', 'text-right')}</th>
           </tr>
         </thead>
         <tbody>
           {sortedRows.map((row) => (
-            <tr key={row.id} className="border-t border-zinc-100 dark:border-zinc-800">
-              <td className="whitespace-nowrap px-3 py-3 text-zinc-500 dark:text-zinc-400">{row.date.slice(0, 10)}</td>
-              <td className="px-3 py-3 text-zinc-500 dark:text-zinc-400">{typeLabel(row.type)}</td>
-              <td className="px-3 py-3 text-zinc-500 dark:text-zinc-400">{row.category || '-'}</td>
-              <td className="px-3 py-3 text-zinc-500 dark:text-zinc-400">{row.asset || '-'}</td>
-              <td className="px-3 py-3 font-medium text-zinc-800 dark:text-zinc-100">{row.merchant || row.memo || '-'}</td>
-              <td className={`px-3 py-3 text-right font-semibold ${row.type === 'income' ? 'text-[#2f8cff]' : row.type === 'expense' ? 'text-[#ff5a52]' : 'text-zinc-500 dark:text-zinc-400'}`}>
+            <tr key={row.id}>
+              <td className="tx-date" title={row.date.slice(0, 10)}>{shortDate(row.date)}</td>
+              <td className="tx-type"><span className={`tx-badge is-${row.type}`}>{typeLabel(row.type)}</span></td>
+              <td className="tx-memo">{row.merchant || row.memo || row.category || '-'}</td>
+              <td className="tx-cat">{row.category || '-'}{row.subcategory ? <span className="tx-sub"> · {row.subcategory}</span> : null}</td>
+              <td className="tx-asset">{row.asset || '-'}</td>
+              <td className={`tx-amount text-right ${row.type === 'income' ? 'text-income' : row.type === 'expense' ? 'is-expense' : 'is-transfer'}`}>
                 {formatMoney(row.amount)}
               </td>
             </tr>
@@ -62,4 +62,13 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
       </table>
     </div>
   );
+}
+
+const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
+function shortDate(value: string): string {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return value.slice(0, 10);
+  const weekday = weekdays[new Date(year, month - 1, day).getDay()];
+  return `${String(month).padStart(2, '0')}.${String(day).padStart(2, '0')} (${weekday})`;
 }

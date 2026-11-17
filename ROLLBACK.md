@@ -36,3 +36,17 @@ Rollback options, from lightest to heaviest:
 3. Disaster recovery: `git clone ~/Desktop/Claude/backups/v0.9.7-before-claude-redesign/repository.bundle restored && cd restored && git checkout backup/v0.9.7-pre-claude`.
 
 Personal data: before testing any release, use Settings > full data backup in the browser and keep the JSON locally. GitHub and these file backups do not contain browser data.
+
+# v0.11.0 wealth-dashboard redesign (Claude) recovery
+
+Pre-release state: v0.10.0 (`5d21d81`), saved on GitHub as branch `backup/v0.10.0`.
+
+v0.11.0 changes presentation only: new navy/slate design tokens (`src/styles.css`, `tailwind.config.js`), new dashboard components (`src/components/WealthOverview.tsx`, display-only metrics in `src/utils/insights.ts`), restyled table/upload/stat components, Pretendard font, and a new app icon. `src/api`, `src/lib`, existing `src/utils` files, `src/types` and `server` are unchanged. Data and backup format are identical (formatVersion 1); no migration.
+
+Rollback options:
+
+1. Revert this release only: `git revert <v0.11.0 commit>` then `git push origin main`.
+2. Restore v0.10.0 exactly: `git checkout backup/v0.10.0 -- . && git commit -m "Restore v0.10.0" && git push origin main`.
+3. Disaster recovery: clone from a bundle in `~/Desktop/Claude/backups/<version>/repository.bundle`.
+
+From now on every release follows the backup protocol in `CLAUDE.md` (GitHub `backup/<previous version>` branch before pushing, plus a local bundle).
