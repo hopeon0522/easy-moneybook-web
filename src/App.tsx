@@ -44,7 +44,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#a173e6',
   sp500: '#22a3b8'
 };
-const appVersion = 'v0.11.1';
+const appVersion = 'v0.11.2';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',

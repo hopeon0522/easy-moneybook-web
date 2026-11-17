@@ -6,7 +6,7 @@
 
 ## 프로젝트 한 줄 요약
 편한가계부(Android) 백업 Excel(.xlsx)을 업로드해 브라우저에서 거래·자산·연금·순자산을 분석하는 개인 가계부 웹앱.
-배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.0** (전문 자산관리 대시보드 개편). 이전 상태 백업: 브랜치 `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
+배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.2**. 이전 상태 백업: 브랜치 `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
 
 ## 아키텍처 (중요)
 - **실제 운영 경로는 100% 프론트엔드**입니다. 개인 데이터는 브라우저 **IndexedDB**(`easy-moneybook-local` DB / `state` 스토어 / `primary` 키)에만 저장됩니다. (커밋 `7c32470 Store personal data locally in browser`)
@@ -30,6 +30,8 @@
 | `EasyMoneyBook.app` | 로컬 실행용 macOS 런처 (시스템 node/pnpm 사용) |
 | `ROLLBACK.md` | 버전별 복구 절차와 백업 위치 |
 | `scripts/backup-release.sh` | 배포 전 백업(브랜치 + 번들) 자동화 |
+| `scripts/smoke-test.mjs` | 빌드 결과를 크롬으로 열어 모든 탭 오류 검사 (배포 전 자동 실행) |
+| `.github/workflows/build-check.yml` | main 외 브랜치 push 시 빌드 + 스모크 테스트만 (배포 안 함) |
 
 ## 작업 규칙 (Codex 시절 관행을 그대로 따름)
 1. **변경할 때마다 버전 3곳을 함께 올립니다** (patch +1):
@@ -55,6 +57,11 @@
 - 대시보드 상단은 `src/components/WealthOverview.tsx`, 파생 지표는 `src/utils/insights.ts`(기존 계산 결과를 읽기만 하는 표시용 계산).
 - 계산/데이터 파일(`src/api/client.ts` 로직, `src/lib/*`, 기존 `src/utils/*`, `server/*`)은 디자인 작업에서 수정하지 않습니다. 커밋 전에 `git diff --stat`으로 확인하세요.
 
+## 검증 절차
+- 빌드 설정·라이브러리·구조처럼 위험한 변경은 `claude/<주제>` 브랜치에 먼저 push → `Build check` 워크플로 통과 확인 → main에 fast-forward.
+- `pages.yml`은 배포 직전에 스모크 테스트를 돌리고, 실패하면 배포하지 않습니다(기존 사이트 유지).
+- 클라우드 세션에서는 npm/Actions artifact 다운로드가 막혀 있으므로 실제 vite 빌드 검증은 GitHub Actions에서 합니다. 로컬 미리보기는 esbuild + tailwind CLI로 대신합니다.
+
 ## 백업 프로토콜 (매 배포마다 필수)
 1. push 전에 현재 GitHub `main`을 `backup/<직전 버전>` 브랜치로 push (`scripts/backup-release.sh <직전 버전>` 또는 `git push origin origin/main:refs/heads/backup/<버전>`). 클라우드 세션에서는 태그 push가 막혀 있어 브랜치를 씁니다.
 2. 가능하면 사용자 맥 `~/Desktop/Claude/backups/<버전>/`에 `repository.bundle`과 `SHA256SUMS`를 남깁니다.
@@ -75,4 +82,4 @@ Node 22 + pnpm 11을 사용합니다.
 - 그 이전 주요 기능: 순자산 추정 시뮬레이터(자산추정 탭, 시나리오 표), 통계청 순자산 상위 분위 비교, 연금저축/퇴직연금 수기 원장 및 벤치마크(KOSPI·S&P 등) 비교, 단일 파일 백업/복원, iPhone 파일 선택 지원.
 
 ## 다음 후보
-자산 탭 보기/편집 모드 분리 · 번들 분리(manualChunks, vite 빌드 검증 후) · App.tsx 탭별 분리 · 거래내역 Virtual Scroll · 날짜/금액 범위 필터 · 예산 CRUD/초과 알림 · xlsx/csv Export · PWA/오프라인 · 차트 lazy loading(현재 JS 번들 약 1.6MB) · App.tsx 분리 리팩터링
+엑셀 라이브러리 지연 로딩(첫 로딩 57% 감소, client.ts import 변경 필요 — 사용자가 안정성 우선으로 보류) · App.tsx 탭별 분리 · 거래내역 Virtual Scroll · 날짜/금액 범위 필터 · 예산 CRUD/초과 알림 · xlsx/csv Export · PWA/오프라인 · 차트 lazy loading(현재 JS 번들 약 1.6MB) · App.tsx 분리 리팩터링

@@ -54,3 +54,11 @@ From now on every release follows the backup protocol in `CLAUDE.md` (GitHub `ba
 # v0.11.1 asset tab view/edit modes
 
 Pre-release state: v0.11.0 (`2d3c7a7`), saved as branch `backup/v0.11.0`. UI-only change in the asset tab (summary strip, read-only list with shares, explicit edit mode). Asset save/move calls are unchanged. Revert with `git revert <v0.11.1 commit>`.
+
+# v0.11.2 vendor bundle split + deploy smoke test
+
+Pre-release state: v0.11.1 (`40225c1`), saved as branch `backup/v0.11.1`. Changes only build configuration (`vite.config.ts` manualChunks: vendor-react / vendor-excel / vendor) and CI (`.github/workflows/build-check.yml`, smoke test step in `pages.yml`, `scripts/smoke-test.mjs`). Application code is unchanged.
+
+The Pages workflow now opens the built site in Chrome with sample data and clicks every tab before deploying; if anything throws, the deploy is skipped and the previous site stays live.
+
+Rollback: `git revert <v0.11.2 commit>` (or restore `vite.config.ts` from `backup/v0.11.1`) and push.
