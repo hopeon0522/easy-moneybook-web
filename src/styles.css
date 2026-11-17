@@ -296,6 +296,25 @@ button, label, select { -webkit-tap-highlight-color: transparent; }
 @media (min-width: 1100px) { .annual-category-table { font-size: 10px !important; } }
 @media (min-width: 1400px) { .annual-category-table { font-size: 11px !important; } }
 
+/* ---------- Loading skeleton ---------- */
+.skeleton { display: block; border-radius: 8px; background: linear-gradient(90deg, rgb(var(--c-line)) 0%, rgb(var(--c-raised)) 50%, rgb(var(--c-line)) 100%); background-size: 200% 100%; animation: skeleton-shimmer 1.2s ease-in-out infinite; color: transparent !important; }
+.wealth-hero .skeleton { background: linear-gradient(90deg, rgb(255 255 255 / .1) 0%, rgb(255 255 255 / .22) 50%, rgb(255 255 255 / .1) 100%); background-size: 200% 100%; }
+.skeleton-hero { width: min(360px, 80%); height: 46px; margin: 6px 0 10px; }
+.skeleton-chip { display: inline-block; width: 130px; height: 26px; border-radius: 999px; }
+.skeleton-line { width: 70%; height: 20px; margin-top: 4px; }
+.skeleton-donut { width: 100%; height: 100%; border-radius: 50%; }
+.skeleton-stack { display: grid; gap: 14px; }
+.skeleton-stack .skeleton-line { width: 100%; height: 28px; }
+@keyframes skeleton-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+/* ---------- Update notice ---------- */
+.update-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid rgb(var(--c-accent) / .25); border-radius: var(--radius-sm); background: rgb(var(--c-accent-soft)); color: rgb(var(--c-ink)); font-size: 13px; }
+.update-notice p { flex: 1; min-width: 200px; }
+.update-dot { width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--c-accent)); box-shadow: 0 0 0 4px rgb(var(--c-accent) / .18); }
+.update-reload { height: 32px; padding: 0 14px; border-radius: 8px; background: rgb(var(--c-accent)); color: #fff; font-weight: 650; }
+.dark .update-reload { color: #0b1220; }
+.update-later { height: 32px; padding: 0 10px; color: rgb(var(--c-muted)); font-weight: 600; }
+
 /* ---------- Asset tab ---------- */
 .asset-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .asset-head p { margin-top: 4px; font-size: 12px; color: rgb(var(--c-muted)); }

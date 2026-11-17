@@ -14,7 +14,6 @@ import {
   Transaction,
   WealthBenchmark
 } from '../types/domain';
-import { parseEasyMoneyBookFile } from '../lib/excelParser';
 import { emptyLocalData, loadLocalData, LocalAssetRow, LocalData, nextId, normalizeRetirementPensionRows, saveLocalData } from '../lib/localStore';
 
 type LegacyPayload = {
@@ -45,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.11.3';
+const backupAppVersion = '0.11.4';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -61,10 +60,22 @@ const settingsDefaults: AppSettings = {
 const pensionAssetName = '삼성증권연금저축';
 
 let dataCache: LocalData | null = null;
+// 화면이 처음 뜰 때 여러 요청이 동시에 들어와도 저장소를 한 번만 읽도록, 읽는 중인 작업을 공유합니다.
+let dataLoading: Promise<LocalData> | null = null;
 
 async function localData(): Promise<LocalData> {
-  if (!dataCache) dataCache = await loadLocalData();
-  return dataCache;
+  if (dataCache) return dataCache;
+  if (!dataLoading) {
+    dataLoading = loadLocalData()
+      .then((loaded) => {
+        if (!dataCache) dataCache = loaded;
+        return dataCache;
+      })
+      .finally(() => {
+        dataLoading = null;
+      });
+  }
+  return dataLoading;
 }
 
 async function persist(data: LocalData): Promise<void> {
@@ -343,9 +354,23 @@ async function dashboard(): Promise<DashboardData> {
   const monthExpense = latestRows.filter((row) => row.type === 'expense').reduce((sum, row) => sum - row.amount, 0);
   const includedAssets = assets.filter((asset) => !asset.is_hidden);
   const liabilityKinds = new Set<AssetKind>(['card', 'loan']);
+  // 성능: 거래를 한 번만 훑어 계좌별·월별 합계를 미리 만들어 둡니다. 아래 계산들은 이 합계를 재사용하며 결과는 이전과 같습니다.
+  const assetMonthTotals = new Map<string, Map<string, number>>();
+  for (const row of transactions) {
+    const month = row.date.slice(0, 7);
+    let byMonth = assetMonthTotals.get(row.asset);
+    if (!byMonth) assetMonthTotals.set(row.asset, (byMonth = new Map()));
+    byMonth.set(month, (byMonth.get(month) ?? 0) + row.amount);
+  }
+  // 최근 월까지의 계좌별 합계는 이전과 똑같은 순서(거래 목록 순서)로 더합니다.
+  const assetTotalsThroughLatest = new Map<string, number>();
+  for (const row of transactions) {
+    if (latestPeriod && row.date.slice(0, 7) > latestPeriod) continue;
+    assetTotalsThroughLatest.set(row.asset, (assetTotalsThroughLatest.get(row.asset) ?? 0) + row.amount);
+  }
   const values = includedAssets.map((asset) => ({
     kind: asset.kind,
-    value: asset.initial_value + transactions.filter((row) => row.asset === asset.name && (!latestPeriod || row.date.slice(0, 7) <= latestPeriod)).reduce((sum, row) => sum + row.amount, 0)
+    value: asset.initial_value + (assetTotalsThroughLatest.get(asset.name) ?? 0)
   }));
   const totalAssets = values.filter((row) => !liabilityKinds.has(row.kind)).reduce((sum, row) => sum + Math.max(0, row.value), 0);
   const liabilities = values.filter((row) => liabilityKinds.has(row.kind)).reduce((sum, row) => sum + Math.abs(row.value), 0);
@@ -357,15 +382,30 @@ async function dashboard(): Promise<DashboardData> {
     0
   );
   let runningNetWorth = initialNetWorth;
+  const visibleMonthTotals = new Map<string, number>();
+  for (const row of transactions) {
+    if (!visibleNames.has(row.asset)) continue;
+    const month = row.date.slice(0, 7);
+    visibleMonthTotals.set(month, (visibleMonthTotals.get(month) ?? 0) + row.amount);
+  }
   const calculatedLine = months.map((month) => {
-    runningNetWorth += transactions.filter((row) => row.date.slice(0, 7) === month && visibleNames.has(row.asset)).reduce((sum, row) => sum + row.amount, 0);
+    runningNetWorth += visibleMonthTotals.get(month) ?? 0;
     return { month, netWorth: runningNetWorth, isManual: 0 };
   });
   const assetLine = [...manual.map((row) => ({ month: row.period, netWorth: row.amount, isManual: 1 })), ...calculatedLine].sort((a, b) => a.month.localeCompare(b.month));
+  // 계좌별 누적 합계를 월 순서대로 이어서 더합니다(날짜가 비어 있는 거래는 이전과 같이 모든 달에 포함).
+  const cumulativeByAsset = new Map<string, number>();
+  for (const asset of includedAssets) cumulativeByAsset.set(asset.name, assetMonthTotals.get(asset.name)?.get('') ?? 0);
+  // 금액이 모두 정수(원 단위)이면 더하는 순서와 상관없이 결과가 같으므로 빠른 누적 방식을 쓰고,
+  // 소수점 금액이 섞여 있으면 반올림 오차까지 이전과 똑같도록 기존 방식으로 계산합니다.
+  const integerAmounts = transactions.every((row) => Number.isInteger(row.amount));
   const debtRatioLine = months.map((month) => {
+    for (const name of cumulativeByAsset.keys()) cumulativeByAsset.set(name, (cumulativeByAsset.get(name) ?? 0) + (assetMonthTotals.get(name)?.get(month) ?? 0));
     const monthValues = includedAssets.map((asset) => ({
       kind: asset.kind,
-      value: asset.initial_value + transactions.filter((row) => row.asset === asset.name && row.date.slice(0, 7) <= month).reduce((sum, row) => sum + row.amount, 0)
+      value: asset.initial_value + (integerAmounts
+        ? cumulativeByAsset.get(asset.name) ?? 0
+        : transactions.filter((row) => row.asset === asset.name && row.date.slice(0, 7) <= month).reduce((sum, row) => sum + row.amount, 0))
     }));
     const monthAssets = monthValues.filter((row) => !liabilityKinds.has(row.kind)).reduce((sum, row) => sum + Math.max(row.value, 0), 0);
     const monthLiabilities = monthValues.filter((row) => liabilityKinds.has(row.kind)).reduce((sum, row) => sum + Math.abs(row.value), 0);
@@ -539,6 +579,8 @@ async function metadata(): Promise<Metadata> {
 }
 
 async function importExcel(file: File, sourceFile = file.name) {
+  // 엑셀 라이브러리(exceljs)는 용량이 커서 업로드할 때만 불러옵니다.
+  const { parseEasyMoneyBookFile } = await import('../lib/excelParser');
   const parsed = (await parseEasyMoneyBookFile(file)).map((row) => ({ ...row, sourceFile }));
   const periods = new Set(parsed.map((row) => row.date.slice(0, 7)).filter(Boolean));
   if (periods.size > 1) throw new Error(`업로드한 파일에 ${[...periods].join(', ')} 데이터가 함께 들어 있습니다. 한 파일에는 한 달 거래만 포함해 주세요.`);

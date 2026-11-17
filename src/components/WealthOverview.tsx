@@ -80,6 +80,8 @@ export function WealthOverview({ data, assets }: Props) {
   const assetGroups = view.allocation.groups.filter((group) => !group.liability);
   const liabilityGroups = view.allocation.groups.filter((group) => group.liability);
   const period = summary?.latestPeriod ? summary.latestPeriod.replace('-', '. ') : '';
+  const loading = !data;
+  const assetsLoading = !assets;
 
   return (
     <>
@@ -87,12 +89,12 @@ export function WealthOverview({ data, assets }: Props) {
         <div className="wealth-hero">
           <div className="wealth-headline">
             <span className="eyebrow">순자산 · Net Worth</span>
-            <strong>{formatMoney(summary?.netWorth ?? 0)}</strong>
+            {loading ? <strong className="skeleton skeleton-hero" aria-label="불러오는 중">&nbsp;</strong> : <strong>{formatMoney(summary?.netWorth ?? 0)}</strong>}
             <div className="delta-row">
-              <ChangeChip change={view.changes.month} label="전월" />
-              <ChangeChip change={view.changes.year} label="1년" />
+              {loading ? <span className="skeleton skeleton-chip" /> : <ChangeChip change={view.changes.month} label="전월" />}
+              {loading ? <span className="skeleton skeleton-chip" /> : <ChangeChip change={view.changes.year} label="1년" />}
             </div>
-            <small>{period ? `${period} 기준 · 이 브라우저에 저장된 데이터` : '데이터 없음'}</small>
+            <small>{loading ? '내 브라우저에 저장된 데이터를 불러오는 중…' : period ? `${period} 기준 · 이 브라우저에 저장된 데이터` : '데이터 없음'}</small>
           </div>
           {view.spark.line && (
             <svg className="wealth-spark" viewBox="0 0 260 64" preserveAspectRatio="none" aria-hidden="true">
@@ -101,8 +103,8 @@ export function WealthOverview({ data, assets }: Props) {
             </svg>
           )}
           <div className="wealth-breakdown">
-            <div><span>총자산</span><strong>{formatMoney(summary?.totalAssets ?? 0)}</strong></div>
-            <div><span>총부채</span><strong className="liability-value">{formatMoney(summary?.liabilities ?? 0)}</strong></div>
+            <div><span>총자산</span>{loading ? <strong className="skeleton skeleton-line">&nbsp;</strong> : <strong>{formatMoney(summary?.totalAssets ?? 0)}</strong>}</div>
+            <div><span>총부채</span>{loading ? <strong className="skeleton skeleton-line">&nbsp;</strong> : <strong className="liability-value">{formatMoney(summary?.liabilities ?? 0)}</strong>}</div>
           </div>
         </div>
 
@@ -111,7 +113,12 @@ export function WealthOverview({ data, assets }: Props) {
             <h2>자산 구성</h2>
             <span className="muted-note">자산 탭 기준 현재 잔액</span>
           </div>
-          {assetGroups.length ? (
+          {assetsLoading ? (
+            <div className="alloc-body" aria-label="불러오는 중">
+              <div className="alloc-chart"><span className="skeleton skeleton-donut" /></div>
+              <div className="skeleton-stack"><span className="skeleton skeleton-line" /><span className="skeleton skeleton-line" /><span className="skeleton skeleton-line" /></div>
+            </div>
+          ) : assetGroups.length ? (
             <div className="alloc-body">
               <div className="alloc-chart">
                 <Donut groups={assetGroups} />

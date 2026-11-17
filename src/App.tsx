@@ -26,6 +26,7 @@ import { PeriodSelect } from './components/PeriodSelect';
 import { TransactionTable } from './components/TransactionTable';
 import { UploadDropzone } from './components/UploadDropzone';
 import { WealthOverview } from './components/WealthOverview';
+import { UpdateNotice } from './components/UpdateNotice';
 import { useAsync } from './hooks/useAsync';
 import { AppSettings, AssetKind, ManualNetWorthPoint, MarketBenchmarkData, MarketBenchmarkKey, PensionSavingsData, WealthBenchmark } from './types/domain';
 import { formatMoney } from './utils/format';
@@ -44,7 +45,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#a173e6',
   sp500: '#22a3b8'
 };
-const appVersion = 'v0.11.3';
+const appVersion = 'v0.11.4';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -648,6 +649,7 @@ export default function App() {
         {moreOpen && <div className="mobile-more"><button className="more-backdrop" aria-label="메뉴 닫기" onClick={() => setMoreOpen(false)} /><nav aria-label="추가 메뉴">{tabs.filter(item => !['대시보드', '거래내역', '자산', '연금저축'].includes(item)).map(item => { const Icon = tabIcons[tabs.indexOf(item)]; return <button key={item} onClick={() => { setTab(item); setMoreOpen(false); window.scrollTo({ top: 0 }); }}><Icon size={20} />{item}</button>; })}</nav></div>}
 
         <main className="app-main mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <UpdateNotice currentVersion={appVersion} />
           {!dashboard.loading && !dashboard.data?.summary.latestPeriod && (
             <section className="mb-5 flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
               <div>

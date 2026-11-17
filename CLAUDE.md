@@ -6,7 +6,7 @@
 
 ## 프로젝트 한 줄 요약
 편한가계부(Android) 백업 Excel(.xlsx)을 업로드해 브라우저에서 거래·자산·연금·순자산을 분석하는 개인 가계부 웹앱.
-배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.3**. 이전 상태 백업: 브랜치 `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
+배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.4**. 이전 상태 백업: 브랜치 `backup/v0.11.3`, `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
 
 ## 아키텍처 (중요)
 - **실제 운영 경로는 100% 프론트엔드**입니다. 개인 데이터는 브라우저 **IndexedDB**(`easy-moneybook-local` DB / `state` 스토어 / `primary` 키)에만 저장됩니다. (커밋 `7c32470 Store personal data locally in browser`)
@@ -60,6 +60,12 @@
 - 대시보드 상단은 `src/components/WealthOverview.tsx`, 파생 지표는 `src/utils/insights.ts`(기존 계산 결과를 읽기만 하는 표시용 계산).
 - 계산/데이터 파일(`src/api/client.ts` 로직, `src/lib/*`, 기존 `src/utils/*`, `server/*`)은 디자인 작업에서 수정하지 않습니다. 커밋 전에 `git diff --stat`으로 확인하세요.
 
+## 성능 메모 (v0.11.4)
+- `client.ts`의 `localData()`는 읽는 중인 작업을 공유해 저장소를 한 번만 읽습니다. `persist()`가 캐시를 갱신합니다.
+- 대시보드 계산은 계좌별·월별 합계를 한 번 만들어 재사용합니다. 계산 로직을 고칠 때는 기존 버전과 결과가 같은지 여러 데이터셋으로 비교한 뒤 배포합니다(소수점 금액은 기존 방식으로 계산하는 안전장치 있음).
+- exceljs는 업로드 시에만 `import()`로 불러옵니다. 정적 import로 되돌리지 마세요.
+- `dist/version.json` + `UpdateNotice`: 새 배포가 있으면 화면 상단에 새로고침 안내가 뜹니다.
+
 ## 검증 절차
 - 빌드 설정·라이브러리·구조처럼 위험한 변경은 `claude/<주제>` 브랜치에 먼저 push → `Build check` 워크플로 통과 확인 → main에 fast-forward.
 - `pages.yml`은 배포 직전에 스모크 테스트를 돌리고, 실패하면 배포하지 않습니다(기존 사이트 유지).
@@ -85,4 +91,4 @@ Node 22 + pnpm 11을 사용합니다.
 - 그 이전 주요 기능: 순자산 추정 시뮬레이터(자산추정 탭, 시나리오 표), 통계청 순자산 상위 분위 비교, 연금저축/퇴직연금 수기 원장 및 벤치마크(KOSPI·S&P 등) 비교, 단일 파일 백업/복원, iPhone 파일 선택 지원.
 
 ## 다음 후보
-엑셀 라이브러리 지연 로딩(첫 로딩 57% 감소, client.ts import 변경 필요 — 사용자가 안정성 우선으로 보류) · App.tsx 탭별 분리 · 거래내역 Virtual Scroll · 날짜/금액 범위 필터 · 예산 CRUD/초과 알림 · xlsx/csv Export · PWA/오프라인 · 차트 lazy loading(현재 JS 번들 약 1.6MB) · App.tsx 분리 리팩터링
+App.tsx 탭별 분리 · 거래내역 Virtual Scroll · 날짜/금액 범위 필터 · 예산 CRUD/초과 알림 · xlsx/csv Export · PWA/오프라인 · 차트 lazy loading(현재 JS 번들 약 1.6MB) · App.tsx 분리 리팩터링

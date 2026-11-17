@@ -53,6 +53,9 @@ jobs:
           mkdir -p /tmp/smoke && cp scripts/smoke-test.mjs /tmp/smoke/
           cd /tmp/smoke && npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.63.0 >/dev/null
           SMOKE_CHANNEL=chrome node smoke-test.mjs http://127.0.0.1:4173/
+          cd "$GITHUB_WORKSPACE"
+          test -f dist/version.json && cat dist/version.json
+          if grep -q vendor-excel dist/index.html; then echo 'exceljs is loaded at startup'; exit 1; fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

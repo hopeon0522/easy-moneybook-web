@@ -68,3 +68,14 @@ Rollback: `git revert <v0.11.2 commit>` (or restore `vite.config.ts` from `backu
 Pre-release state: v0.11.2 (`e5ffc65`), saved as branch `backup/v0.11.2`. Adds `realEstate` ('부동산') to `AssetKind` (types, localStore row type, labels, dashboard allocation). No calculation code changed: net worth already treats every kind except card/loan as an asset. Stored data and backup formatVersion stay 1; existing data needs no migration.
 
 Caution before reverting: if any asset was saved with kind `realEstate`, change it to another kind in the asset tab first, because older versions do not list that kind (its value would still count as an asset but it would not appear under a group).
+
+# v0.11.4 faster dashboard, lazy Excel library, update notice
+
+Pre-release state: v0.11.3 (`36513d5`), saved as branch `backup/v0.11.3`.
+
+- `src/api/client.ts`: storage is read once even when many screens ask at the same time; dashboard totals, net worth line and debt ratio line are computed from per-account monthly totals instead of rescanning every transaction for every month and account. When any amount has decimals the debt ratio falls back to the original per-month scan so results stay bit-identical. Verified identical output for every read API on 8 datasets (small, real estate, 5-year 8,820 transactions, 3 random edge-case sets with hidden/archived/unknown accounts and blank dates, decimal amounts, empty). 5-year dataset: 680 ms → 92 ms, storage reads 22 → 1.
+- Excel parser (exceljs, ~57% of the old startup JS) is loaded only when uploading. CI fails if `vendor-excel` is referenced from `index.html`.
+- `vite.config.ts` writes `dist/version.json`; `UpdateNotice` compares it with the running version and offers a cache-busting reload.
+- Net worth card shows a loading placeholder instead of ₩0.
+
+Rollback: `git revert <v0.11.4 commit>` and push, or restore `src/api/client.ts` from `backup/v0.11.3` if only the calculation change needs undoing.
