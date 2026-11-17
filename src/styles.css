@@ -210,3 +210,122 @@ select {
     white-space: nowrap;
   }
 }
+
+/* ==========================================================================
+   v0.10 Design refresh (Claude) — 스타일 전용 레이어
+   계산/데이터 로직은 건드리지 않고, 이 블록만 지우면 이전 디자인으로 돌아갑니다.
+   ========================================================================== */
+.moneybook-shell {
+  --panel: #ffffff; --canvas: #f3f4f7; --line: #e9ebf0; --line-strong: #dfe2e8;
+  --muted: #6b7180; --text: #1b1e27; --accent: #f0645a; --accent-soft: #fff1ef; --accent-ink: #d24c43;
+  --radius: 16px; --radius-sm: 10px;
+  --shadow: 0 1px 2px rgb(16 24 40 / .04), 0 4px 16px rgb(16 24 40 / .04);
+  background: var(--canvas) !important;
+}
+.dark .moneybook-shell {
+  --panel: #191b21; --canvas: #101115; --line: #262932; --line-strong: #30333d;
+  --muted: #9a9fac; --text: #eef0f4; --accent: #ff7d73; --accent-soft: #2e1f1e; --accent-ink: #ff9a90;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 6px 20px rgb(0 0 0 / .25);
+}
+
+/* Sidebar */
+.desktop-sidebar { padding: 28px 16px 22px; border-right-color: var(--line); }
+.sidebar-brand { font-size: 15px; letter-spacing: -.01em; padding: 0 8px; }
+.sidebar-brand svg { color: var(--accent); background: var(--accent-soft); padding: 7px; border-radius: 10px; width: 36px; height: 36px; }
+.sidebar-subtitle { padding: 0 8px; margin: 8px 0 26px; }
+.sidebar-link { height: 42px; border-radius: var(--radius-sm); margin: 2px 0; font-size: 13.5px; position: relative; }
+.sidebar-link.is-active { background: var(--accent-soft); color: var(--accent-ink); }
+.dark .sidebar-link.is-active { background: var(--accent-soft); color: var(--accent-ink); }
+.sidebar-link.is-active::before { content: ''; position: absolute; left: -16px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.sidebar-link:nth-child(7) { margin-top: 22px; }
+.sidebar-link:nth-child(7)::after { content: ''; position: absolute; left: 13px; right: 13px; top: -12px; border-top: 1px solid var(--line); }
+.sidebar-footer { margin: auto 4px 0; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--canvas); }
+.sidebar-footer>span:last-child { padding-left: 14px; }
+
+/* Header */
+.app-header { background: color-mix(in srgb, var(--panel) 82%, transparent) !important; border-color: var(--line) !important; }
+.app-header h1 { font-size: 19px; letter-spacing: -.02em; font-weight: 700; }
+.theme-button { border-radius: var(--radius-sm); background: var(--panel); }
+
+/* Main layout */
+.app-main { padding-top: 26px; }
+.dashboard-layout { gap: 20px; }
+.app-main section.rounded-lg {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 22px 24px;
+}
+.app-main h2 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+
+.dashboard-layout>section:last-child:not(.rounded-lg) { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px; }
+.dashboard-layout>section:last-child:not(.rounded-lg) h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+.dashboard-layout>section:last-child:not(.rounded-lg) .rounded-lg { border: 0 !important; }
+
+.app-main section.rounded-lg section.rounded-lg { box-shadow: none; border-radius: 12px; }
+
+/* Net worth hero */
+.wealth-overview {
+  position: relative; overflow: hidden; padding: 28px 32px; border: 1px solid var(--line); border-radius: var(--radius);
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 55%),
+    var(--panel);
+  box-shadow: var(--shadow);
+}
+.wealth-headline>span { font-size: 13px; letter-spacing: .01em; }
+.wealth-headline>strong { font-size: 40px; font-weight: 750; letter-spacing: -.03em; line-height: 1.25; margin: 8px 0 6px; }
+.wealth-headline>small { display: inline-block; padding: 3px 9px; border-radius: 999px; background: var(--canvas); font-size: 11px; }
+.wealth-breakdown { gap: 12px; }
+.wealth-breakdown>div { min-width: 170px; padding: 16px 18px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--canvas) 75%, transparent); border: 1px solid var(--line); }
+.wealth-breakdown span { margin-bottom: 6px; }
+.wealth-breakdown strong { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+
+/* Monthly KPI strip */
+.monthly-summary { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.stat-summary { padding: 20px 24px; }
+.stat-summary>div:last-child { letter-spacing: -.01em; font-weight: 700; }
+
+/* Tables */
+.app-main table { font-size: 13px; }
+.app-main thead th { font-size: 11.5px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.app-main thead tr { background: transparent; }
+.cashflow-table th, .cashflow-table td { padding: 12px 14px; border-bottom-color: var(--line); }
+.cashflow-table thead th { border-bottom: 1px solid var(--line-strong); }
+.app-main tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.app-main .overflow-x-auto.rounded-lg, .app-main div.rounded-lg.border { border-radius: var(--radius-sm); border-color: var(--line) !important; }
+
+/* Controls */
+.app-main input:not([type=checkbox]):not([type=file]):not([type=radio]), .app-main select, .category-period-select {
+  border-radius: var(--radius-sm) !important; border-color: var(--line-strong) !important; background-color: var(--panel); transition: border-color 150ms, box-shadow 150ms;
+}
+.app-main input:not([type=checkbox]):not([type=file]):not([type=radio]):focus, .app-main select:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); outline: none; }
+.app-main input[type=checkbox] { accent-color: var(--accent); }
+.category-view-toggle { background: var(--canvas); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.category-view-toggle button { border-radius: 7px; }
+.category-view-toggle button.is-active { color: var(--accent-ink); }
+.app-main button.rounded-md, .app-main button.rounded-lg, .app-main label.rounded-lg { border-radius: var(--radius-sm); }
+.app-main button { transition: background-color 150ms, color 150ms, border-color 150ms, box-shadow 150ms, transform 120ms; }
+.app-main button:active:not(:disabled) { transform: translateY(1px); }
+.moneybook-shell button:focus-visible, .moneybook-shell input:focus-visible, .moneybook-shell select:focus-visible { outline-color: var(--accent); }
+
+/* Tooltips & charts */
+.category-year-tooltip, .recharts-default-tooltip { border-radius: var(--radius-sm) !important; border-color: var(--line) !important; box-shadow: 0 10px 30px rgb(16 24 40 / .12) !important; }
+.recharts-cartesian-grid line { stroke: var(--line); }
+.recharts-sector:hover, .recharts-rectangle:hover, .recharts-dot:hover { transform: scale(1.08); }
+
+/* Mobile */
+@media (max-width: 1199px) { .wealth-breakdown>div { flex: 1; } }
+@media (max-width: 767px) {
+  .app-main { padding-top: 16px; }
+  .dashboard-layout { gap: 14px; }
+  .wealth-overview { padding: 22px 20px; }
+  .wealth-headline>strong { font-size: 32px; }
+  .wealth-breakdown { gap: 10px; }
+  .wealth-breakdown>div { padding: 12px 14px; min-width: 0; flex: 1; }
+  .wealth-breakdown strong { font-size: 15px; }
+  .app-main section.rounded-lg { padding: 18px 14px; border-radius: 14px; }
+  .monthly-summary { border-radius: 14px; }
+  .stat-summary { padding: 14px 10px; }
+  .mobile-navigation { margin: 0 10px calc(10px + env(safe-area-inset-bottom)); inset: auto 0 0; padding: 8px 4px; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 30px rgb(16 24 40 / .12); background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(12px); }
+  .mobile-navigation button.is-active { color: var(--accent-ink); }
+  .mobile-more nav { border-radius: var(--radius); bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .app-main { padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+}
