@@ -42,6 +42,16 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
   const netWorth = await page.textContent('.wealth-headline strong');
   console.log(`[${viewport.width}] net worth rendered: ${netWorth}`);
   if (viewport.width > 800) {
+    // 엑셀 업로드 경로: 업로드할 때만 불러오는 엑셀 라이브러리 파일이 실제로 받아지는지 확인합니다.
+    // (빈 파일이라 내용 오류 안내가 뜨는 것은 정상이고, 파일을 못 불러오는 오류만 실패로 봅니다.)
+    page.on('dialog', (dialog) => void dialog.dismiss());
+    const excelChunk = page.waitForResponse((response) => /vendor-excel|excelParser/.test(response.url()), { timeout: 15000 }).catch(() => null);
+    await page.setInputFiles('header input[type=file]', { name: 'smoke.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('not a real workbook') });
+    const response = await excelChunk;
+    if (!response || !response.ok()) errors.push(`excel library did not load on upload (${response ? response.status() : 'no request'})`);
+    else console.log(`[${viewport.width}] excel library loaded on upload: ${response.url().split('/').pop()}`);
+    await page.waitForTimeout(1500);
+    errors.splice(0, errors.length, ...errors.filter((message) => !/end of central directory|zip|Corrupted|invalid|xlsx/i.test(message)));
     for (const tab of tabs) {
       await page.click(`.desktop-sidebar button:has-text("${tab}")`);
       await page.waitForTimeout(500);
