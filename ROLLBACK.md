@@ -50,3 +50,7 @@ Rollback options:
 3. Disaster recovery: clone from a bundle in `~/Desktop/Claude/backups/<version>/repository.bundle`.
 
 From now on every release follows the backup protocol in `CLAUDE.md` (GitHub `backup/<previous version>` branch before pushing, plus a local bundle).
+
+# v0.11.1 asset tab view/edit modes
+
+Pre-release state: v0.11.0 (`2d3c7a7`), saved as branch `backup/v0.11.0`. UI-only change in the asset tab (summary strip, read-only list with shares, explicit edit mode). Asset save/move calls are unchanged. Revert with `git revert <v0.11.1 commit>`.

@@ -296,6 +296,48 @@ button, label, select { -webkit-tap-highlight-color: transparent; }
 @media (min-width: 1100px) { .annual-category-table { font-size: 10px !important; } }
 @media (min-width: 1400px) { .annual-category-table { font-size: 11px !important; } }
 
+/* ---------- Asset tab ---------- */
+.asset-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.asset-head p { margin-top: 4px; font-size: 12px; color: rgb(var(--c-muted)); }
+.asset-edit-toggle { height: 36px; padding: 0 16px; border: 1px solid rgb(var(--c-line-strong)); border-radius: var(--radius-sm); background: rgb(var(--c-surface)); font-size: 13px; font-weight: 650; color: rgb(var(--c-ink)); }
+.asset-edit-toggle:hover { border-color: rgb(var(--c-accent)); color: rgb(var(--c-accent)); }
+.asset-edit-toggle.is-on { background: rgb(var(--c-accent)); border-color: rgb(var(--c-accent)); color: #fff; }
+.dark .asset-edit-toggle.is-on { color: #0b1220; }
+.asset-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-bottom: 18px; overflow: hidden; border: 1px solid rgb(var(--c-line)); border-radius: 11px; background: rgb(var(--c-line)); }
+.asset-summary>div { padding: 13px 16px; background: rgb(var(--c-raised)); }
+.asset-summary span { display: block; font-size: 11.5px; font-weight: 600; color: rgb(var(--c-muted)); }
+.asset-summary strong { display: block; margin-top: 3px; font-size: 17px; font-weight: 750; letter-spacing: -0.01em; }
+.app-main section.asset-group { padding: 0 !important; }
+.asset-group.is-liability .asset-view-share i { background: linear-gradient(90deg, #b8434a, #e07a7f); }
+.asset-group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; border-bottom: 1px solid rgb(var(--c-line)); }
+.asset-group-toggle { display: flex; flex: 1; align-items: center; gap: 8px; padding: 13px 0; text-align: left; font-size: 14px; font-weight: 700; }
+.asset-group-caret { width: 14px; font-size: 11px; color: rgb(var(--c-muted)); }
+.asset-group-count { padding: 1px 8px; border-radius: 999px; background: rgb(var(--c-raised)); box-shadow: inset 0 0 0 1px rgb(var(--c-line)); font-size: 11px; font-weight: 600; color: rgb(var(--c-muted)); }
+.asset-group-total { font-size: 15px; font-weight: 750; }
+.asset-view-list { margin: 0; padding: 0 16px; list-style: none; }
+.asset-view-list li { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(120px, 1fr) minmax(130px, auto); align-items: center; gap: 18px; padding: 13px 0; border-bottom: 1px solid rgb(var(--c-line)); }
+.asset-view-list li:last-child { border-bottom: 0; }
+.asset-view-list li.is-excluded { opacity: .55; }
+.asset-view-name>span { display: block; font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-view-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; }
+.asset-view-tags em { padding: 1px 7px; border-radius: 5px; background: rgb(var(--c-warn) / .12); font-style: normal; font-size: 10.5px; font-weight: 650; color: rgb(var(--c-warn)); }
+.asset-view-tags small { font-size: 11px; color: rgb(var(--c-muted)); }
+.asset-view-share { display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
+.asset-view-share>span { height: 6px; overflow: hidden; border-radius: 4px; background: rgb(var(--c-line)); }
+.asset-view-share i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #24489b, #3f86e0); }
+.asset-view-share b { text-align: right; font-size: 12px; font-weight: 650; color: rgb(var(--c-muted)); }
+.asset-view-value { text-align: right; font-size: 15px; font-weight: 750; letter-spacing: -0.01em; }
+@media (max-width: 767px) {
+  .asset-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .asset-summary strong { font-size: 15px; }
+  .asset-group-head { padding: 0 12px; }
+  .asset-view-list { padding: 0 12px; }
+  .asset-view-list li { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "share share"; gap: 8px 12px; }
+  .asset-view-name { grid-area: name; }
+  .asset-view-value { grid-area: value; font-size: 14px; }
+  .asset-view-share { grid-area: share; }
+}
+
 /* ---------- Calendar ---------- */
 .cal-grid { border: 1px solid rgb(var(--c-line)); border-radius: 11px; }
 .cal-head { background: rgb(var(--c-raised)); border-bottom: 1px solid rgb(var(--c-line)); }

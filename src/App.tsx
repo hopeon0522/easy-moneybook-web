@@ -29,6 +29,7 @@ import { WealthOverview } from './components/WealthOverview';
 import { useAsync } from './hooks/useAsync';
 import { AppSettings, AssetKind, ManualNetWorthPoint, MarketBenchmarkData, MarketBenchmarkKey, PensionSavingsData, WealthBenchmark } from './types/domain';
 import { formatMoney } from './utils/format';
+import { assetAllocation, formatPercent } from './utils/insights';
 
 const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
 const tabIcons = [LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings];
@@ -43,7 +44,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#a173e6',
   sp500: '#22a3b8'
 };
-const appVersion = 'v0.11.0';
+const appVersion = 'v0.11.1';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -403,6 +404,7 @@ export default function App() {
   const [dashboardPieActiveIndex, setDashboardPieActiveIndex] = useState<number | undefined>();
   const [categoryPieActiveIndex, setCategoryPieActiveIndex] = useState<number | undefined>();
   const [localDataImporting, setLocalDataImporting] = useState(false);
+  const [assetEditMode, setAssetEditMode] = useState(false);
   const [collapsedAssetKinds, setCollapsedAssetKinds] = useState<Record<AssetKind, boolean>>({
     savings: false,
     investment: false,
@@ -1130,13 +1132,28 @@ export default function App() {
 
           {tab === '자산' && (
             <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="asset-head">
                 <div>
-                  <h2 className="text-sm font-semibold">자산 관리</h2>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">초기값 + 업로드된 거래 증감으로 자산/부채를 계산합니다.</p>
+                  <h2>자산 관리</h2>
+                  <p>{assetEditMode ? '초기값·분류·계산 포함 여부를 바꾼 뒤 각 행의 저장을 눌러야 반영됩니다.' : '초기값 + 업로드된 거래 증감으로 계산한 현재 잔액입니다.'}</p>
                 </div>
+                <button className={`asset-edit-toggle ${assetEditMode ? 'is-on' : ''}`} onClick={() => setAssetEditMode((value) => !value)}>
+                  {assetEditMode ? '편집 완료' : '편집'}
+                </button>
               </div>
-              <div className="space-y-6">
+              {(() => {
+                const allocation = assetAllocation(assetOptions);
+                const accountCount = assetOptions.filter((item) => !item.isArchived).length;
+                return (
+                  <div className="asset-summary">
+                    <div><span>자산 합계</span><strong>{formatMoney(allocation.assetTotal)}</strong></div>
+                    <div><span>부채 합계</span><strong className="text-expense">{formatMoney(allocation.liabilityTotal)}</strong></div>
+                    <div><span>순자산 (자산 탭 기준)</span><strong>{formatMoney(allocation.assetTotal - allocation.liabilityTotal)}</strong></div>
+                    <div><span>관리 중인 계좌</span><strong>{accountCount}개</strong></div>
+                  </div>
+                );
+              })()}
+              <div className="space-y-4">
                 {(Object.keys(assetKindLabels) as AssetKind[]).map((kind) => (
                   <AssetManager
                     key={kind}
@@ -1150,6 +1167,7 @@ export default function App() {
                     }
                     assets={assetOptions.filter((assetItem) => assetItem.kind === kind && !assetItem.isArchived)}
                     allAssets={assetOptions}
+                    editing={assetEditMode}
                     onSaved={refreshAll}
                   />
                 ))}
@@ -1159,6 +1177,7 @@ export default function App() {
                   onToggleCollapsed={() => setHiddenAssetsCollapsed((current) => !current)}
                   assets={assetOptions.filter((assetItem) => Boolean(assetItem.isArchived))}
                   allAssets={assetOptions}
+                  editing={assetEditMode}
                   onSaved={refreshAll}
                 />
               </div>
@@ -1804,11 +1823,13 @@ function AssetManager({
   onToggleCollapsed,
   assets,
   allAssets,
+  editing,
   onSaved
 }: {
   title: string;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  editing: boolean;
   assets: Array<{
     id: number;
     name: string;
@@ -1861,20 +1882,24 @@ function AssetManager({
     await onSaved();
   }
 
+  const groupTotal = sortedAssets.filter((asset) => !asset.isHidden).reduce((sum, asset) => sum + asset.currentValue, 0);
+  const shareBase = sortedAssets.filter((asset) => !asset.isHidden).reduce((sum, asset) => sum + Math.abs(asset.currentValue), 0);
+
+  if (!editing && !assets.length) return null;
+
   return (
-    <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
-        <button className="flex flex-1 items-center gap-2 px-3 py-3 text-left text-sm font-semibold" onClick={onToggleCollapsed}>
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-zinc-300 text-xs text-zinc-500 dark:border-zinc-700">
-            {collapsed ? '＋' : '－'}
-          </span>
+    <section className={`asset-group overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${editing ? 'is-editing' : ''} ${groupTotal < 0 ? 'is-liability' : ''}`}>
+      <div className="asset-group-head">
+        <button className="asset-group-toggle" onClick={onToggleCollapsed} aria-expanded={!collapsed}>
+          <span className="asset-group-caret">{collapsed ? '▸' : '▾'}</span>
           {title}
+          <span className="asset-group-count">{assets.length}개</span>
         </button>
-        <span className="mr-3 rounded-lg bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-500 dark:bg-zinc-800">{assets.length}개</span>
+        {assets.length > 0 && <strong className={`asset-group-total ${groupTotal < 0 ? 'text-expense' : ''}`}>{formatMoney(groupTotal)}</strong>}
       </div>
       {collapsed ? null : !assets.length ? (
         <div className="p-4 text-sm text-zinc-500">이 분류에 자산이 없습니다.</div>
-      ) : (
+      ) : editing ? (
         <div className="overflow-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-50 text-left text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
@@ -1905,6 +1930,29 @@ function AssetManager({
             </tbody>
           </table>
         </div>
+      ) : (
+        <ul className="asset-view-list">
+          {sortedAssets.map((asset) => {
+            const share = !asset.isHidden && shareBase ? Math.abs(asset.currentValue) / shareBase : 0;
+            return (
+              <li key={asset.id} className={asset.isHidden ? 'is-excluded' : ''}>
+                <div className="asset-view-name">
+                  <span>{asset.name}</span>
+                  <div className="asset-view-tags">
+                    {Boolean(asset.isHidden) && <em>계산 제외</em>}
+                    {asset.kind === 'checkCard' && asset.linkedAsset && <em>연결: {asset.linkedAsset}</em>}
+                    <small>초기값 {formatMoney(asset.initialValue)}</small>
+                  </div>
+                </div>
+                <div className="asset-view-share" aria-label={`그룹 내 비중 ${formatPercent(share)}`}>
+                  <span><i style={{ width: `${Math.max(share > 0 ? 2 : 0, share * 100)}%` }} /></span>
+                  <b>{asset.isHidden ? '—' : formatPercent(share)}</b>
+                </div>
+                <strong className={`asset-view-value ${asset.currentValue < 0 ? 'text-expense' : ''}`}>{formatMoney(asset.currentValue)}</strong>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </section>
   );
