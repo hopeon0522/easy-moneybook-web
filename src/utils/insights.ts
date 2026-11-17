@@ -3,7 +3,7 @@
 import type { AssetKind, DashboardData, Metadata } from '../types/domain';
 
 export type AllocationGroup = {
-  key: 'savings' | 'investment' | 'other' | 'card' | 'loan';
+  key: 'savings' | 'investment' | 'realEstate' | 'other' | 'card' | 'loan';
   label: string;
   value: number;
   share: number;
@@ -14,6 +14,7 @@ export type AllocationGroup = {
 const groupMeta: Record<AllocationGroup['key'], { label: string; color: string; liability: boolean }> = {
   savings: { label: '현금·예금', color: '#24489b', liability: false },
   investment: { label: '투자', color: '#3f86e0', liability: false },
+  realEstate: { label: '부동산', color: '#22a3b8', liability: false },
   other: { label: '기타 자산', color: '#8fa3c0', liability: false },
   card: { label: '카드 대금', color: '#d08a2e', liability: true },
   loan: { label: '대출', color: '#c94a4a', liability: true }
@@ -22,6 +23,7 @@ const groupMeta: Record<AllocationGroup['key'], { label: string; color: string; 
 const kindToGroup: Record<AssetKind, AllocationGroup['key'] | null> = {
   savings: 'savings',
   investment: 'investment',
+  realEstate: 'realEstate',
   other: 'other',
   checkCard: null,
   card: 'card',
@@ -42,7 +44,7 @@ export function assetAllocation(assets: MetaAsset[] = []) {
     const value = groupMeta[group].liability ? Math.abs(asset.currentValue) : Math.max(0, asset.currentValue);
     totals.set(group, (totals.get(group) ?? 0) + value);
   }
-  const assetTotal = (['savings', 'investment', 'other'] as const).reduce((sum, key) => sum + (totals.get(key) ?? 0), 0);
+  const assetTotal = (['savings', 'investment', 'realEstate', 'other'] as const).reduce((sum, key) => sum + (totals.get(key) ?? 0), 0);
   const liabilityTotal = (['card', 'loan'] as const).reduce((sum, key) => sum + (totals.get(key) ?? 0), 0);
   const groups: AllocationGroup[] = (Object.keys(groupMeta) as AllocationGroup['key'][])
     .map((key) => {
@@ -56,7 +58,7 @@ export function assetAllocation(assets: MetaAsset[] = []) {
 
 export function topHoldings(assets: MetaAsset[] = [], limit = 5) {
   const rows = visibleAssets(assets)
-    .filter((asset) => asset.kind === 'savings' || asset.kind === 'investment' || asset.kind === 'other')
+    .filter((asset) => asset.kind === 'savings' || asset.kind === 'investment' || asset.kind === 'realEstate' || asset.kind === 'other')
     .map((asset) => ({ name: asset.name, kind: asset.kind, value: Math.max(0, asset.currentValue) }))
     .filter((row) => row.value > 0)
     .sort((a, b) => b.value - a.value);

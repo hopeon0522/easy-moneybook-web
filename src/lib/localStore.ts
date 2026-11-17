@@ -19,7 +19,7 @@ export type LocalTransactionRow = {
 export type LocalAssetRow = {
   id: number;
   name: string;
-  kind: 'savings' | 'investment' | 'card' | 'checkCard' | 'loan' | 'other';
+  kind: 'savings' | 'investment' | 'realEstate' | 'card' | 'checkCard' | 'loan' | 'other';
   initial_value: number;
   is_hidden: boolean;
   is_archived: boolean;

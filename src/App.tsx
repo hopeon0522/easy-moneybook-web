@@ -44,11 +44,12 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#a173e6',
   sp500: '#22a3b8'
 };
-const appVersion = 'v0.11.2';
+const appVersion = 'v0.11.3';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
   investment: '투자',
+  realEstate: '부동산',
   card: '카드',
   checkCard: '체크카드',
   loan: '대출',
@@ -408,6 +409,7 @@ export default function App() {
   const [collapsedAssetKinds, setCollapsedAssetKinds] = useState<Record<AssetKind, boolean>>({
     savings: false,
     investment: false,
+    realEstate: false,
     card: false,
     checkCard: false,
     loan: false,
@@ -2428,7 +2430,7 @@ function AssetRow({
           <select className="w-44 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" value={linkedAsset} onChange={(event) => setLinkedAsset(event.target.value)}>
             <option value="">선택 안함</option>
             {allAssets
-              .filter((item) => item.id !== asset.id && item.kind !== 'card' && item.kind !== 'checkCard' && item.kind !== 'loan')
+              .filter((item) => item.id !== asset.id && item.kind !== 'card' && item.kind !== 'checkCard' && item.kind !== 'loan' && item.kind !== 'realEstate')
               .map((item) => (
                 <option key={item.id} value={item.name}>
                   {item.name}

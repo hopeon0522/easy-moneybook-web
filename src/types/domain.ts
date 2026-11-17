@@ -55,7 +55,7 @@ export interface Metadata {
   tags: Array<{ id: number; name: string }>;
 }
 
-export type AssetKind = 'savings' | 'investment' | 'card' | 'checkCard' | 'loan' | 'other';
+export type AssetKind = 'savings' | 'investment' | 'realEstate' | 'card' | 'checkCard' | 'loan' | 'other';
 
 export interface ImportFile {
   id: number;

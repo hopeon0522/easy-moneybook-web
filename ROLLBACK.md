@@ -62,3 +62,9 @@ Pre-release state: v0.11.1 (`40225c1`), saved as branch `backup/v0.11.1`. Change
 The Pages workflow now opens the built site in Chrome with sample data and clicks every tab before deploying; if anything throws, the deploy is skipped and the previous site stays live.
 
 Rollback: `git revert <v0.11.2 commit>` (or restore `vite.config.ts` from `backup/v0.11.1`) and push.
+
+# v0.11.3 real estate asset kind
+
+Pre-release state: v0.11.2 (`e5ffc65`), saved as branch `backup/v0.11.2`. Adds `realEstate` ('부동산') to `AssetKind` (types, localStore row type, labels, dashboard allocation). No calculation code changed: net worth already treats every kind except card/loan as an asset. Stored data and backup formatVersion stay 1; existing data needs no migration.
+
+Caution before reverting: if any asset was saved with kind `realEstate`, change it to another kind in the asset tab first, because older versions do not list that kind (its value would still count as an asset but it would not appear under a group).

@@ -6,7 +6,7 @@
 
 ## 프로젝트 한 줄 요약
 편한가계부(Android) 백업 Excel(.xlsx)을 업로드해 브라우저에서 거래·자산·연금·순자산을 분석하는 개인 가계부 웹앱.
-배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.2**. 이전 상태 백업: 브랜치 `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
+배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.3**. 이전 상태 백업: 브랜치 `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
 
 ## 아키텍처 (중요)
 - **실제 운영 경로는 100% 프론트엔드**입니다. 개인 데이터는 브라우저 **IndexedDB**(`easy-moneybook-local` DB / `state` 스토어 / `primary` 키)에만 저장됩니다. (커밋 `7c32470 Store personal data locally in browser`)
@@ -48,6 +48,9 @@
 ## 제품 방향
 사용자가 원하는 것은 **전문성 있는 개인 자산관리 시스템**입니다. 노트북 위주 사용, 모바일도 확인. 첫 화면은 순자산과 자산 구성.
 작업 중 모르는 것이 있으면 추측하지 말고 사용자에게 물어보고 진행합니다.
+
+## 자산 분류
+`AssetKind`: savings(저축) · investment(투자) · realEstate(부동산, v0.11.3) · card(카드) · checkCard(체크카드) · loan(대출) · other(기타). 부채는 card·loan뿐이고 나머지는 모두 자산으로 합산됩니다. 새 분류를 추가할 때는 `types/domain.ts`, `lib/localStore.ts`의 타입, `App.tsx`의 `assetKindLabels`(순서 = 자산 탭 표시 순서)와 접힘 상태, `utils/insights.ts`의 자산 구성 그룹을 함께 고칩니다.
 
 ## 디자인 시스템 (v0.11.0~)
 - 톤: 네이비·슬레이트. 색은 `src/styles.css` 상단의 `--c-*` 토큰(R G B)으로만 관리하고, Tailwind에서는 `accent / income / expense / gain / warn` (+ `-soft`) 클래스로 씁니다. `#ff5a52` 같은 hex 하드코딩 금지.
