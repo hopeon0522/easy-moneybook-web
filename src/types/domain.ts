@@ -95,6 +95,7 @@ export interface AppSettings {
   pensionChartGridXMonths: number;
   pensionChartGridYWon: number;
   usIndexDollarBasis: boolean;
+  hideAllocationAmounts: boolean;
   wealthBenchmark: WealthBenchmark | null;
 }
 

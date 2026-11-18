@@ -17,6 +17,7 @@ import {
 type Props = {
   data?: DashboardData | null;
   assets?: Metadata['assets'];
+  hideAllocationAmounts?: boolean;
 };
 
 function ChangeChip({ change, label }: { change: Change; label: string }) {
@@ -62,7 +63,7 @@ function Donut({ groups }: { groups: Array<{ key: string; share: number; color: 
   );
 }
 
-export function WealthOverview({ data, assets }: Props) {
+export function WealthOverview({ data, assets, hideAllocationAmounts = false }: Props) {
   const summary = data?.summary;
   const view = useMemo(() => {
     const allocation = assetAllocation(assets);
@@ -122,7 +123,7 @@ export function WealthOverview({ data, assets }: Props) {
             <div className="alloc-body">
               <div className="alloc-chart">
                 <Donut groups={assetGroups} />
-                <div className="alloc-center"><span>자산</span><strong>{Math.round(view.allocation.assetTotal / 10000).toLocaleString('ko-KR')}만</strong></div>
+                <div className="alloc-center">{hideAllocationAmounts ? <><span>자산</span><strong>{assetGroups.length}개 분류</strong></> : <><span>자산</span><strong>{Math.round(view.allocation.assetTotal / 10000).toLocaleString('ko-KR')}만</strong></>}</div>
               </div>
               <ul className="alloc-list">
                 {assetGroups.map((group) => (
@@ -130,7 +131,7 @@ export function WealthOverview({ data, assets }: Props) {
                     <i style={{ background: group.color }} />
                     <span>{group.label}</span>
                     <b>{formatPercent(group.share)}</b>
-                    <em>{formatMoney(group.value)}</em>
+                    {!hideAllocationAmounts && <em>{formatMoney(group.value)}</em>}
                   </li>
                 ))}
                 {liabilityGroups.map((group) => (
@@ -138,7 +139,7 @@ export function WealthOverview({ data, assets }: Props) {
                     <i style={{ background: group.color }} />
                     <span>{group.label}</span>
                     <b>부채</b>
-                    <em>{formatMoney(group.value)}</em>
+                    {!hideAllocationAmounts && <em>{formatMoney(group.value)}</em>}
                   </li>
                 ))}
               </ul>

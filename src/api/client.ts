@@ -44,7 +44,7 @@ type BackupSummary = {
 };
 
 const backupFormatVersion = 1;
-const backupAppVersion = '0.11.4';
+const backupAppVersion = '0.11.5';
 const backupArrayKeys = ['transactions', 'assets', 'categories', 'tags', 'settings', 'manual_net_worth', 'import_files'] as const;
 
 const settingsDefaults: AppSettings = {
@@ -55,6 +55,7 @@ const settingsDefaults: AppSettings = {
   pensionChartGridXMonths: 12,
   pensionChartGridYWon: 10_000_000,
   usIndexDollarBasis: false,
+  hideAllocationAmounts: false,
   wealthBenchmark: null
 };
 const pensionAssetName = '삼성증권연금저축';
@@ -500,6 +501,7 @@ async function settings(): Promise<AppSettings> {
     pensionChartGridXMonths: Math.max(1, Number(values.pensionChartGridXMonths || settingsDefaults.pensionChartGridXMonths)),
     pensionChartGridYWon: Math.max(10_000, Number(values.pensionChartGridYWon || settingsDefaults.pensionChartGridYWon)),
     usIndexDollarBasis: values.usIndexDollarBasis === 'true',
+    hideAllocationAmounts: values.hideAllocationAmounts === 'true',
     wealthBenchmark
   };
 }
@@ -513,7 +515,8 @@ async function updateSettings(input: AppSettings): Promise<AppSettings> {
     chartGridYWon: Math.max(100_000_000, Math.round(Number(input.chartGridYWon || 100_000_000) / 100_000_000) * 100_000_000),
     pensionChartGridXMonths: Math.max(1, Math.round(Number(input.pensionChartGridXMonths || 12))),
     pensionChartGridYWon: Math.max(10_000, Math.round(Number(input.pensionChartGridYWon || 10_000_000) / 10_000) * 10_000),
-    usIndexDollarBasis: Boolean(input.usIndexDollarBasis)
+    usIndexDollarBasis: Boolean(input.usIndexDollarBasis),
+    hideAllocationAmounts: Boolean(input.hideAllocationAmounts)
   };
   const now = new Date().toISOString();
   for (const [key, value] of Object.entries(next)) {

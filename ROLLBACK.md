@@ -79,3 +79,10 @@ Pre-release state: v0.11.3 (`36513d5`), saved as branch `backup/v0.11.3`.
 - Net worth card shows a loading placeholder instead of ₩0.
 
 Rollback: `git revert <v0.11.4 commit>` and push, or restore `src/api/client.ts` from `backup/v0.11.3` if only the calculation change needs undoing.
+
+# v0.11.5 hide allocation amounts setting + crisp favicons
+
+Pre-release state: v0.11.4 (`2b4e9ef`), saved as branch `backup/v0.11.4`.
+- New setting key `hideAllocationAmounts` ('true'/'false' row in `settings`, same pattern as `usIndexDollarBasis`); missing key means false, so older backups load unchanged. When on, the dashboard allocation card shows shares only.
+- Favicons redrawn as pixel-aligned bars (`public/icons/*`), new file names so Safari refetches, plus 180px full-bleed apple-touch-icon and Safari mask icon.
+Rollback: `git revert <v0.11.5 commit>` and push. An extra `hideAllocationAmounts` settings row left in data is ignored by older versions.

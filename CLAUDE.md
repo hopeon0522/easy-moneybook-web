@@ -6,7 +6,7 @@
 
 ## 프로젝트 한 줄 요약
 편한가계부(Android) 백업 Excel(.xlsx)을 업로드해 브라우저에서 거래·자산·연금·순자산을 분석하는 개인 가계부 웹앱.
-배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.4**. 이전 상태 백업: 브랜치 `backup/v0.11.3`, `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
+배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.5**. 이전 상태 백업: 브랜치 `backup/v0.11.4`, `backup/v0.11.3`, `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
 
 ## 아키텍처 (중요)
 - **실제 운영 경로는 100% 프론트엔드**입니다. 개인 데이터는 브라우저 **IndexedDB**(`easy-moneybook-local` DB / `state` 스토어 / `primary` 키)에만 저장됩니다. (커밋 `7c32470 Store personal data locally in browser`)
@@ -59,6 +59,12 @@
 - 글꼴: Pretendard(CDN, index.html). 숫자는 tabular-nums.
 - 대시보드 상단은 `src/components/WealthOverview.tsx`, 파생 지표는 `src/utils/insights.ts`(기존 계산 결과를 읽기만 하는 표시용 계산).
 - 계산/데이터 파일(`src/api/client.ts` 로직, `src/lib/*`, 기존 `src/utils/*`, `server/*`)은 디자인 작업에서 수정하지 않습니다. 커밋 전에 `git diff --stat`으로 확인하세요.
+
+## 설정 항목
+설정은 `settings` 테이블의 key/value 행으로 저장됩니다(백업에 포함). 새 설정을 추가할 때는 `AppSettings` 타입, `client.ts`의 `settingsDefaults`·`settings()`·`updateSettings()`, `App.tsx`의 `SettingsForm`을 함께 고칩니다. 예: `usIndexDollarBasis`, `hideAllocationAmounts`(대시보드 자산 구성 금액 숨기기, v0.11.5).
+
+## 아이콘
+`public/icons/`(favicon.svg·16·32·48 png, apple-touch-icon 180 꽉 찬 정사각형, mask-icon.svg)와 `public/favicon.ico`. 앱 큰 아이콘 원본은 `assets/app-icon/easy-moneybook-icon.svg`. 사파리는 아이콘을 오래 저장하므로 디자인을 바꿀 때는 파일 이름을 바꿉니다.
 
 ## 성능 메모 (v0.11.4)
 - `client.ts`의 `localData()`는 읽는 중인 작업을 공유해 저장소를 한 번만 읽습니다. `persist()`가 캐시를 갱신합니다.

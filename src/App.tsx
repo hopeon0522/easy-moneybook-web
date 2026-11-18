@@ -45,7 +45,7 @@ const benchmarkColors: Record<MarketBenchmarkKey, string> = {
   nasdaq100: '#a173e6',
   sp500: '#22a3b8'
 };
-const appVersion = 'v0.11.4';
+const appVersion = 'v0.11.5';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -684,7 +684,7 @@ export default function App() {
           )}
           {tab === '대시보드' && (
             <div className="dashboard-layout">
-              <WealthOverview data={dashboard.data} assets={metadata.data?.assets} />
+              <WealthOverview data={dashboard.data} assets={metadata.data?.assets} hideAllocationAmounts={settings.data?.hideAllocationAmounts ?? false} />
               <section className="cashflow-panel rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h2>최근 12개월 수입·지출·순자산</h2>
@@ -1984,6 +1984,7 @@ function SettingsForm({
   const [pensionChartGridXMonths, setPensionChartGridXMonths] = useState(String(settings?.pensionChartGridXMonths ?? 12));
   const [pensionChartGridYTenThousand, setPensionChartGridYTenThousand] = useState(String(Math.round((settings?.pensionChartGridYWon ?? 10_000_000) / 10_000)));
   const [usIndexDollarBasis, setUsIndexDollarBasis] = useState(settings?.usIndexDollarBasis ?? false);
+  const [hideAllocationAmounts, setHideAllocationAmounts] = useState(settings?.hideAllocationAmounts ?? false);
   const [manualYear, setManualYear] = useState('');
   const [manualMonth, setManualMonth] = useState('');
   const [manualAmount, setManualAmount] = useState('');
@@ -2003,6 +2004,7 @@ function SettingsForm({
       setPensionChartGridXMonths(String(settings.pensionChartGridXMonths ?? 12));
       setPensionChartGridYTenThousand(String(Math.round((settings.pensionChartGridYWon ?? 10_000_000) / 10_000)));
       setUsIndexDollarBasis(settings.usIndexDollarBasis ?? false);
+      setHideAllocationAmounts(settings.hideAllocationAmounts ?? false);
     }
   }, [settings]);
 
@@ -2087,6 +2089,13 @@ function SettingsForm({
             <input className="h-4 w-4 accent-accent" type="checkbox" checked={usIndexDollarBasis} onChange={(event) => setUsIndexDollarBasis(event.target.checked)} />
             미국 지수 달러 기준
           </label>
+          <label className="mt-3 flex items-start gap-2 text-sm font-medium">
+            <input className="mt-0.5 h-4 w-4 accent-accent" type="checkbox" checked={hideAllocationAmounts} onChange={(event) => setHideAllocationAmounts(event.target.checked)} />
+            <span>
+              대시보드 자산 구성에서 금액 숨기기
+              <span className="block text-xs font-normal text-zinc-500">켜면 자산 구성 카드에 비중(%)만 보이고 금액은 가려집니다.</span>
+            </span>
+          </label>
         </div>
         <button
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -2102,6 +2111,7 @@ function SettingsForm({
                 pensionChartGridXMonths: Number(pensionChartGridXMonths || 12),
                 pensionChartGridYWon: Number(pensionChartGridYTenThousand || 1000) * 10_000,
                 usIndexDollarBasis,
+                hideAllocationAmounts,
                 wealthBenchmark: settings?.wealthBenchmark ?? null
               });
               await onSaved();
