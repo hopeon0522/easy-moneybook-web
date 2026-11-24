@@ -32,20 +32,29 @@ import { AppSettings, AssetKind, ManualNetWorthPoint, MarketBenchmarkData, Marke
 import { formatMoney } from './utils/format';
 import { assetAllocation, formatPercent } from './utils/insights';
 
-const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'] as const;
-const tabIcons = [LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, Archive, TrendingUp, Settings];
-const pieColors = ['#24489b', '#3f86e0', '#22a3b8', '#7a5cc7', '#d08a2e', '#d4578a', '#5b9a4a', '#8fa3c0', '#b06ad9', '#c9a227'];
-const incomeColor = '#3f86e0';
-const expenseColor = '#e5484d';
-const netWorthColor = '#2f5fc4';
-const debtRatioColor = '#d08a2e';
-const pensionReturnColor = '#a173e6';
+const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금', '자산추정', '데이터', '설정'] as const;
+type Tab = (typeof tabs)[number];
+const tabIcons = [LayoutDashboard, ListOrdered, ChartPie, CalendarDays, Wallet, Landmark, TrendingUp, Archive, Settings];
+// 사이드바 묶음: 성격이 같은 화면끼리 모았습니다.
+const navGroups: Array<{ label: string; items: Tab[] }> = [
+  { label: '개요', items: ['대시보드'] },
+  { label: '분석', items: ['거래내역', '카테고리', '캘린더'] },
+  { label: '자산', items: ['자산', '연금', '자산추정'] },
+  { label: '관리', items: ['데이터', '설정'] }
+];
+const mobilePrimaryTabs: Tab[] = ['대시보드', '거래내역', '자산', '연금'];
+const pieColors = ['#C96442', '#3D6FA8', '#6A9A5B', '#C79A3A', '#8B6BB0', '#D08770', '#4E9A9A', '#A9A49A', '#B5577A', '#7D8C4A'];
+const incomeColor = '#3D6FA8';
+const expenseColor = '#B34138';
+const netWorthColor = '#C96442';
+const debtRatioColor = '#C79A3A';
+const pensionReturnColor = '#8B6BB0';
 const benchmarkColors: Record<MarketBenchmarkKey, string> = {
-  kospi: '#3b6fe0',
-  nasdaq100: '#a173e6',
-  sp500: '#22a3b8'
+  kospi: '#3D6FA8',
+  nasdaq100: '#8B6BB0',
+  sp500: '#4E9A9A'
 };
-const appVersion = 'v0.11.5';
+const appVersion = 'v0.12.0';
 const LoosePie = Pie as unknown as ComponentType<any>;
 const assetKindLabels: Record<AssetKind, string> = {
   savings: '저축',
@@ -366,7 +375,7 @@ function ActivePieSector(props: {
   endAngle?: number;
   fill?: string;
 }) {
-  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#24489b' } = props;
+  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '#C96442' } = props;
   const offset = 10;
   const x = cx + offset * Math.cos((-midAngle * Math.PI) / 180);
   const y = cy + offset * Math.sin((-midAngle * Math.PI) / 180);
@@ -385,7 +394,7 @@ function ActivePieSector(props: {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<(typeof tabs)[number]>('대시보드');
+  const [tab, setTab] = useState<Tab>('대시보드');
   const [moreOpen, setMoreOpen] = useState(false);
   const [dark, setDark] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('');
@@ -613,10 +622,15 @@ export default function App() {
           <div className="sidebar-brand"><BookOpen size={25} /><span>{settings.data?.appTitle ?? 'EasyMoneyBook Web'}</span></div>
           <p className="sidebar-subtitle">{settings.data?.appSubtitle ?? '편한가계부 Excel 백업 분석 공간'}</p>
           <nav aria-label="주 메뉴">
-            {tabs.map((item, index) => {
-              const Icon = tabIcons[index];
-              return <button key={item} aria-current={tab === item ? 'page' : undefined} className={`sidebar-link ${tab === item ? 'is-active' : ''}`} onClick={() => { setTab(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Icon size={19} strokeWidth={1.7} /><span>{item}</span></button>;
-            })}
+            {navGroups.map((group) => (
+              <div key={group.label} className="sidebar-group">
+                <p className="sidebar-group-label">{group.label}</p>
+                {group.items.map((item) => {
+                  const Icon = tabIcons[tabs.indexOf(item)];
+                  return <button key={item} aria-current={tab === item ? 'page' : undefined} className={`sidebar-link ${tab === item ? 'is-active' : ''}`} onClick={() => { setTab(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Icon size={18} strokeWidth={1.7} /><span>{item}</span></button>;
+                })}
+              </div>
+            ))}
           </nav>
           <div className="sidebar-footer"><span className="status-dot" />내 브라우저에 보관<span>{appVersion}</span></div>
         </aside>
@@ -640,13 +654,13 @@ export default function App() {
           </div>
         </header>
         <nav className="mobile-navigation" aria-label="모바일 메뉴">
-          {(['대시보드', '거래내역', '자산', '연금저축'] as const).map((item) => {
+          {mobilePrimaryTabs.map((item) => {
             const Icon = tabIcons[tabs.indexOf(item)];
             return <button key={item} aria-current={tab === item ? 'page' : undefined} className={tab === item ? 'is-active' : ''} onClick={() => { setTab(item); setMoreOpen(false); window.scrollTo({ top: 0 }); }}><Icon size={21} /><span>{item}</span></button>;
           })}
-          <button aria-expanded={moreOpen} aria-label="더보기" className={moreOpen || !['대시보드', '거래내역', '자산', '연금저축'].includes(tab) ? 'is-active' : ''} onClick={() => setMoreOpen(!moreOpen)}>{moreOpen ? <X size={21} /> : <MoreHorizontal size={21} />}<span>더보기</span></button>
+          <button aria-expanded={moreOpen} aria-label="더보기" className={moreOpen || !mobilePrimaryTabs.includes(tab) ? 'is-active' : ''} onClick={() => setMoreOpen(!moreOpen)}>{moreOpen ? <X size={21} /> : <MoreHorizontal size={21} />}<span>더보기</span></button>
         </nav>
-        {moreOpen && <div className="mobile-more"><button className="more-backdrop" aria-label="메뉴 닫기" onClick={() => setMoreOpen(false)} /><nav aria-label="추가 메뉴">{tabs.filter(item => !['대시보드', '거래내역', '자산', '연금저축'].includes(item)).map(item => { const Icon = tabIcons[tabs.indexOf(item)]; return <button key={item} onClick={() => { setTab(item); setMoreOpen(false); window.scrollTo({ top: 0 }); }}><Icon size={20} />{item}</button>; })}</nav></div>}
+        {moreOpen && <div className="mobile-more"><button className="more-backdrop" aria-label="메뉴 닫기" onClick={() => setMoreOpen(false)} /><nav aria-label="추가 메뉴">{tabs.filter(item => !mobilePrimaryTabs.includes(item)).map(item => { const Icon = tabIcons[tabs.indexOf(item)]; return <button key={item} onClick={() => { setTab(item); setMoreOpen(false); window.scrollTo({ top: 0 }); }}><Icon size={20} />{item}</button>; })}</nav></div>}
 
         <main className="app-main mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <UpdateNotice currentVersion={appVersion} />
@@ -756,9 +770,9 @@ export default function App() {
                   <div className="h-72">
                     <ResponsiveContainer>
                       <BarChart data={dashboard.data?.monthlyBars ?? []}>
-                        <CartesianGrid stroke="#e6e8ee" vertical={false} />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a90a0' }} />
-                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 10000)}만`} tick={{ fontSize: 11, fill: '#8a90a0' }} />
+                        <CartesianGrid stroke="#E8E6DC" vertical={false} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8A887F' }} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 10000)}만`} tick={{ fontSize: 11, fill: '#8A887F' }} />
                         <Tooltip formatter={(value) => formatMoney(Number(value))} />
                         <Bar dataKey="income" fill={incomeColor} name="수입" radius={[7, 7, 0, 0]} className="chart-hover" />
                         <Bar dataKey="expense" fill={expenseColor} name="지출" radius={[7, 7, 0, 0]} className="chart-hover" />
@@ -790,7 +804,7 @@ export default function App() {
                         tickFormatter={formatChartYear}
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 11, fill: '#8a90a0' }}
+                        tick={{ fontSize: 11, fill: '#8A887F' }}
                       />
                       <YAxis
                         yAxisId="netWorth"
@@ -799,17 +813,17 @@ export default function App() {
                         tickFormatter={(value) => formatCompactMoney(Number(value))}
                         ticks={netWorthYTicks}
                         domain={[netWorthYTicks[0] ?? 'auto', netWorthYTicks[netWorthYTicks.length - 1] ?? 'auto']}
-                        tick={{ fontSize: 10, fill: '#8a90a0' }}
+                        tick={{ fontSize: 10, fill: '#8A887F' }}
                         width={92}
                       />
-                      <YAxis yAxisId="debtRatio" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8a90a0' }} width={46} />
+                      <YAxis yAxisId="debtRatio" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8A887F' }} width={46} />
                       {netWorthXTicks.map((tick) => (
-                        <ReferenceLine key={`x-${tick}`} x={tick} yAxisId="netWorth" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <ReferenceLine key={`x-${tick}`} x={tick} yAxisId="netWorth" stroke="#D6D3C7" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
                       {netWorthYTicks.map((tick) => (
-                        <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />
+                        <ReferenceLine key={`y-${tick}`} y={tick} yAxisId="netWorth" stroke="#D6D3C7" strokeDasharray="4 7" strokeOpacity={0.55} />
                       ))}
-                      <Tooltip cursor={{ stroke: '#9ca3af', strokeDasharray: '3 5' }} content={<NetWorthTooltip mode={netWorthMode} />} />
+                      <Tooltip cursor={{ stroke: '#A9A49A', strokeDasharray: '3 5' }} content={<NetWorthTooltip mode={netWorthMode} />} />
                       <Area yAxisId="netWorth" type="monotone" dataKey="netWorth" stroke={netWorthColor} fill="url(#wealth-wash)" strokeWidth={3} name="순자산" dot={{ r: 2, fill: netWorthColor }} activeDot={{ r: 6, strokeWidth: 3, stroke: 'var(--panel)', fill: netWorthColor }} />
                       <Line yAxisId="debtRatio" type="monotone" dataKey="debtRatio" stroke={debtRatioColor} strokeWidth={1.75} strokeDasharray="5 5" name="부채율" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
                     </ComposedChart>
@@ -919,13 +933,13 @@ export default function App() {
                           tickFormatter={formatChartYear}
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fontSize: 11, fill: '#8a90a0' }}
+                          tick={{ fontSize: 11, fill: '#8A887F' }}
                         />
-                        <YAxis yAxisId="amount" axisLine={false} tickLine={false} ticks={pensionYTicks} domain={[pensionYTicks[0] ?? 'auto', pensionYTicks[pensionYTicks.length - 1] ?? 'auto']} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8a90a0' }} width={62} />
+                        <YAxis yAxisId="amount" axisLine={false} tickLine={false} ticks={pensionYTicks} domain={[pensionYTicks[0] ?? 'auto', pensionYTicks[pensionYTicks.length - 1] ?? 'auto']} tickFormatter={(value) => `${Math.round(Number(value) / 10_000)}만`} tick={{ fontSize: 10, fill: '#8A887F' }} width={62} />
                         <YAxis yAxisId="returnRate" orientation="right" axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: pensionReturnColor }} width={48} />
-                        {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />)}
-                        {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />)}
-                        <Tooltip cursor={{ stroke: '#9ca3af', strokeDasharray: '3 5' }} content={<PensionTooltip />} />
+                        {pensionXTicks.map((tick) => <ReferenceLine key={`pension-x-${tick}`} x={tick} yAxisId="amount" stroke="#D6D3C7" strokeDasharray="4 7" strokeOpacity={0.55} />)}
+                        {pensionYTicks.map((tick) => <ReferenceLine key={`pension-y-${tick}`} y={tick} yAxisId="amount" stroke="#D6D3C7" strokeDasharray="4 7" strokeOpacity={0.55} />)}
+                        <Tooltip cursor={{ stroke: '#A9A49A', strokeDasharray: '3 5' }} content={<PensionTooltip />} />
                         <Line yAxisId="amount" type="monotone" dataKey="principal" stroke={incomeColor} strokeWidth={2.5} name="납입금" dot={{ r: 2 }} activeDot={{ r: 6 }} />
                         <Area yAxisId="amount" type="monotone" dataKey="total" fill="url(#pension-wash)" stroke={netWorthColor} strokeWidth={3} name="총액" dot={{ r: 2, fill: netWorthColor }} activeDot={{ r: 6, stroke: 'var(--panel)', strokeWidth: 3, fill: netWorthColor }} />
                         <Line yAxisId="returnRate" type="monotone" dataKey="returnRate" stroke={pensionReturnColor} strokeWidth={2.25} name="수익률" dot={triangleChartDot} activeDot={activeTriangleChartDot} />
@@ -937,10 +951,10 @@ export default function App() {
                     <div className="h-72">
                       <ResponsiveContainer>
                         <LineChart data={pensionComparison}>
-                          <CartesianGrid vertical={false} stroke="#c9ced8" strokeDasharray="4 7" strokeOpacity={0.55} />
-                          <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a90a0' }} />
-                          <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8a90a0' }} width={48} />
-                          <ReferenceLine y={0} stroke="#a1a1aa" strokeOpacity={0.7} />
+                          <CartesianGrid vertical={false} stroke="#D6D3C7" strokeDasharray="4 7" strokeOpacity={0.55} />
+                          <XAxis dataKey="xValue" type="number" scale="time" domain={['dataMin', 'dataMax']} ticks={pensionComparisonXTicks} tickFormatter={formatChartYear} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8A887F' }} />
+                          <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: '#8A887F' }} width={48} />
+                          <ReferenceLine y={0} stroke="#A9A49A" strokeOpacity={0.7} />
                           <Tooltip content={<PensionComparisonTooltip pensionLabel={pensionChartMode === 'savings' ? '연금저축 TWR' : '퇴직연금 TWR'} enabledBenchmarks={pensionBenchmarks} />} />
                           <Line type="monotone" dataKey="pensionReturn" stroke={pensionReturnColor} strokeWidth={2.5} name="연금 TWR" dot={{ r: 2.5, fill: pensionReturnColor }} activeDot={{ r: 6 }} />
                           {(Object.keys(marketBenchmarkLabels) as MarketBenchmarkKey[]).map((key) => pensionBenchmarks[key] && (
@@ -973,10 +987,10 @@ export default function App() {
 
           {tab === '거래내역' && (
             <div className="space-y-4">
-              <PeriodSelect label="거래내역" periods={periodOptions} selected={effectivePeriod} onSelect={setSelectedPeriod} />
-              <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="grid gap-3 md:grid-cols-6">
-                  <input className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950 md:col-span-2" placeholder="전체 검색" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <section className="tx-toolbar">
+                <PeriodSelect label="거래내역" periods={periodOptions} selected={effectivePeriod} onSelect={setSelectedPeriod} />
+                <div className="tx-filters">
+                  <input className="tx-search rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" placeholder="내용·메모 검색" value={search} onChange={(e) => setSearch(e.target.value)} />
                   <select className="rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-950" value={category} onChange={(e) => setCategory(e.target.value)}>
                     <option value="">카테고리 전체</option>
                     {categoryOptions.map((item) => (
@@ -997,6 +1011,20 @@ export default function App() {
                   </select>
                 </div>
               </section>
+              {(() => {
+                // 화면 표시용 요약: 지금 걸러진 거래의 건수와 수입·지출 합계
+                const rows = transactions.data ?? [];
+                const income = rows.filter((row) => row.type === 'income').reduce((sum, row) => sum + row.amount, 0);
+                const expense = rows.filter((row) => row.type === 'expense').reduce((sum, row) => sum + row.amount, 0);
+                return (
+                  <div className="tx-summary">
+                    <span><b>{rows.length.toLocaleString('ko-KR')}</b>건</span>
+                    <span>수입 <b className="text-income">{formatMoney(income)}</b></span>
+                    <span>지출 <b className="text-expense">{formatMoney(expense)}</b></span>
+                    <span>합계 <b>{formatMoney(income + expense)}</b></span>
+                  </div>
+                );
+              })()}
               <TransactionTable rows={transactions.data ?? []} />
             </div>
           )}
@@ -1079,8 +1107,16 @@ export default function App() {
                             className={`cursor-pointer border-b border-zinc-100 dark:border-zinc-800 ${selectedCategory === row.name ? 'bg-accent-soft' : ''}`}
                             onClick={() => setSelectedCategory(row.name)}
                           >
-                            <td className="px-3 py-2"><span className="mr-2 inline-block h-3 w-3 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />{row.name}</td>
-                            <td className={`px-3 py-2 text-right font-medium ${categoryMode === 'income' && row.signedValue < 0 ? 'text-expense' : ''}`}>
+                            <td className="px-3 py-2.5"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: pieColors[index % pieColors.length] }} />{row.name}</td>
+                            <td className="category-share-cell px-3 py-2.5">
+                              {(() => {
+                                // 표시용 비중: 이 달 목록 합계 대비
+                                const total = (categoryExpense.data?.rows ?? []).reduce((sum, item) => sum + Math.abs(item.value), 0);
+                                const share = total ? Math.abs(row.value) / total : 0;
+                                return <><span className="category-share-bar"><i style={{ width: `${Math.max(2, share * 100)}%`, backgroundColor: pieColors[index % pieColors.length] }} /></span><b>{(share * 100).toFixed(1)}%</b></>;
+                              })()}
+                            </td>
+                            <td className={`px-3 py-2.5 text-right font-medium tabular-nums ${categoryMode === 'income' && row.signedValue < 0 ? 'text-expense' : ''}`}>
                               {formatMoney(categoryMode === 'income' ? row.signedValue : row.value)}
                             </td>
                           </tr>
@@ -1188,14 +1224,15 @@ export default function App() {
             </section>
           )}
 
-          {tab === '연금저축' && (
+          {tab === '연금' && (
             <PensionManager savingsData={pensionSavings.data} retirementData={retirementPension.data} onSaved={refreshAll} />
           )}
 
-          {tab === '백업' && (
+          {tab === '데이터' && (
+            <div className="space-y-4">
             <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold">업로드된 Excel 파일</h2>
+                <h2 className="text-sm font-semibold">업로드한 엑셀 파일</h2>
                 <span className="text-xs text-zinc-500">{imports.data?.length ?? 0}개</span>
               </div>
               <div className="overflow-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
@@ -1228,6 +1265,18 @@ export default function App() {
                 </table>
               </div>
             </section>
+            <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <SettingsForm
+                section="data"
+                settings={settings.data}
+                manualPoints={manualNetWorth.data ?? []}
+                marketData={marketBenchmarks.data}
+                onSaved={settings.reload}
+                onManualChanged={refreshAll}
+                onMarketReload={marketBenchmarks.reload}
+              />
+            </section>
+            </div>
           )}
 
           {tab === '자산추정' && (
@@ -1240,8 +1289,9 @@ export default function App() {
 
           {tab === '설정' && (
             <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="mb-3 text-sm font-semibold">설정</h2>
+              <h2 className="mb-3 text-sm font-semibold">화면 설정</h2>
               <SettingsForm
+                section="settings"
                 settings={settings.data}
                 manualPoints={manualNetWorth.data ?? []}
                 marketData={marketBenchmarks.data}
@@ -1375,7 +1425,7 @@ function AssetProjection({
                 <a className="font-medium text-zinc-600 underline underline-offset-2 dark:text-zinc-300" href={benchmark.sourceUrl} target="_blank" rel="noreferrer">공식 통계 출처</a>
               </span>
             ) : (
-              <span className="mt-2 block text-right text-[10px] font-normal text-zinc-400">설정에서 대한민국 가구 순자산 통계를 갱신해 주세요.</span>
+              <span className="mt-2 block text-right text-[10px] font-normal text-zinc-400">데이터 메뉴에서 대한민국 가구 순자산 통계를 불러오면 상위 몇 %인지 함께 보여요.</span>
             )}
           </label>
           <fieldset className="border-t border-zinc-100 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-zinc-800">
@@ -1466,7 +1516,7 @@ function AssetProjection({
                     return (
                       <td key={rate} className="overflow-hidden px-0.5 py-2.5 text-center font-semibold tabular-nums" title={fullAmount} aria-label={`${rate}% ${year}년 후 ${fullAmount}`}>
                         <span>{compactAmount}</span><span className="block sm:inline">억</span>
-                        <span className="mt-1 block text-[8px] font-normal leading-none text-zinc-400 sm:text-[10px] lg:text-[12px]">{formatEstimatedPercentValue(amount, benchmark)}</span>
+                        {benchmark && <span className="mt-1 block text-[8px] font-normal leading-none text-zinc-400 sm:text-[10px] lg:text-[12px]">{formatEstimatedPercentValue(amount, benchmark)}</span>}
                       </td>
                     );
                   })}
@@ -1628,9 +1678,9 @@ function PensionManager({
   const [mode, setMode] = useState<'savings' | 'retirement'>('savings');
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 rounded-lg border border-zinc-200 bg-white p-1.5 dark:border-zinc-800 dark:bg-zinc-900">
-        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'savings' ? 'bg-accent text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('savings')}>연금저축</button>
-        <button className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${mode === 'retirement' ? 'bg-accent text-white shadow-sm' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setMode('retirement')}>퇴직연금</button>
+      <div className="category-view-toggle w-fit">
+        <button className={mode === 'savings' ? 'is-active' : ''} aria-pressed={mode === 'savings'} onClick={() => setMode('savings')}>연금저축</button>
+        <button className={mode === 'retirement' ? 'is-active' : ''} aria-pressed={mode === 'retirement'} onClick={() => setMode('retirement')}>퇴직연금</button>
       </div>
       {mode === 'savings' ? <PensionSavingsManager data={savingsData} onSaved={onSaved} /> : <RetirementPensionManager data={retirementData} onSaved={onSaved} />}
     </div>
@@ -1638,6 +1688,7 @@ function PensionManager({
 }
 
 function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | null; onSaved: () => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
   const totals = [...(data?.rows ?? [])]
     .reverse()
     .reduce(
@@ -1659,21 +1710,25 @@ function PensionSavingsManager({ data, onSaved }: { data?: PensionSavingsData | 
             <div><span className="block text-zinc-500">누적 납입금</span><strong className="mt-1 block text-sm text-income">{formatMoney(totals.principal)}</strong></div>
             <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(totals.profit)}</strong></div>
             <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
-            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-expense">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className={`mt-1 block text-sm ${returnRate != null && returnRate < 0 ? 'text-expense' : 'text-gain'}`}>{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
           </div>
         </div>
 
       </section>
 
       <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="ledger-toolbar">
+          <span>{editing ? '값을 바꾼 줄에만 저장 버튼이 나타납니다.' : '월별 납입금·수익 기록'}</span>
+          <button className={`asset-edit-toggle ${editing ? 'is-on' : ''}`} onClick={() => setEditing((value) => !value)}>{editing ? '편집 완료' : '편집'}</button>
+        </div>
         <div className="overflow-auto">
-          <table className="min-w-[940px] w-full text-sm">
+          <table className={`ledger-table w-full text-sm ${editing ? 'min-w-[940px]' : 'min-w-[640px]'}`}>
             <thead className="bg-zinc-50 text-left text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-              <tr><th className="px-3 py-3">년/월</th><th className="px-3 py-3 text-right">월 납입금</th><th className="px-3 py-3 text-right">계좌잔액</th><th className="px-3 py-3 text-right">월 수익(수입)</th><th className="px-3 py-3">계산 기준</th><th className="px-3 py-3 text-right">관리</th></tr>
+              <tr><th className="px-3 py-3">년/월</th><th className="px-3 py-3 text-right">월 납입금</th><th className="px-3 py-3 text-right">계좌잔액</th><th className="px-3 py-3 text-right">월 수익(수입)</th><th className="px-3 py-3">계산 기준</th>{editing && <th className="px-3 py-3 text-right">관리</th>}</tr>
             </thead>
             <tbody>
               {(data?.rows ?? []).length ? (
-                (data?.rows ?? []).map((row) => <PensionMonthRow key={row.period} row={row} onSaved={onSaved} />)
+                (data?.rows ?? []).map((row) => <PensionMonthRow key={row.period} row={row} editing={editing} onSaved={onSaved} />)
               ) : (
                 <tr><td className="px-3 py-5 text-zinc-500" colSpan={6}>연금저축 월별 데이터가 없습니다.</td></tr>
               )}
@@ -1691,6 +1746,7 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
   const [contribution, setContribution] = useState('');
   const [accountBalance, setAccountBalance] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const totals = (data?.rows ?? []).reduce(
     (result, row) => ({ principal: result.principal + row.principal, profit: result.profit + row.profit }),
     { principal: 0, profit: 0 }
@@ -1710,7 +1766,7 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
             <div><span className="block text-zinc-500">누적 납입금</span><strong className="mt-1 block text-sm text-income">{formatMoney(totals.principal)}</strong></div>
             <div><span className="block text-zinc-500">누적 수익</span><strong className={`mt-1 block text-sm ${totals.profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(totals.profit)}</strong></div>
             <div><span className="block text-zinc-500">총액</span><strong className="mt-1 block text-sm">{formatMoney(total)}</strong></div>
-            <div><span className="block text-zinc-500">수익률</span><strong className="mt-1 block text-sm text-expense">{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
+            <div><span className="block text-zinc-500">수익률</span><strong className={`mt-1 block text-sm ${returnRate != null && returnRate < 0 ? 'text-expense' : 'text-gain'}`}>{returnRate == null ? '-' : `${returnRate.toFixed(2)}%`}</strong></div>
           </div>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-[0.8fr_0.6fr_1.2fr_1.2fr_auto]">
@@ -1743,14 +1799,18 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
       </section>
 
       <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="ledger-toolbar">
+          <span>{editing ? '값을 바꾼 줄에만 저장 버튼이 나타납니다.' : '월별 납입금·잔액 기록'}</span>
+          <button className={`asset-edit-toggle ${editing ? 'is-on' : ''}`} onClick={() => setEditing((value) => !value)}>{editing ? '편집 완료' : '편집'}</button>
+        </div>
         <div className="overflow-auto">
-          <table className="min-w-[820px] w-full text-sm">
+          <table className={`ledger-table w-full text-sm ${editing ? 'min-w-[820px]' : 'min-w-[560px]'}`}>
             <thead className="bg-zinc-50 text-left text-xs font-semibold text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-              <tr><th className="px-3 py-3">년/월</th><th className="px-3 py-3 text-right">월 납입금</th><th className="px-3 py-3 text-right">계좌잔액</th><th className="px-3 py-3 text-right">월 수익</th><th className="px-3 py-3 text-right">관리</th></tr>
+              <tr><th className="px-3 py-3">년/월</th><th className="px-3 py-3 text-right">월 납입금</th><th className="px-3 py-3 text-right">계좌잔액</th><th className="px-3 py-3 text-right">월 수익</th>{editing && <th className="px-3 py-3 text-right">관리</th>}</tr>
             </thead>
             <tbody>
               {(data?.rows ?? []).length ? (
-                (data?.rows ?? []).map((row) => <RetirementMonthRow key={row.period} row={row} onSaved={onSaved} />)
+                (data?.rows ?? []).map((row) => <RetirementMonthRow key={row.period} row={row} editing={editing} onSaved={onSaved} />)
               ) : (
                 <tr><td className="px-3 py-5 text-zinc-500" colSpan={5}>입력된 퇴직연금 월별 데이터가 없습니다.</td></tr>
               )}
@@ -1762,7 +1822,7 @@ function RetirementPensionManager({ data, onSaved }: { data?: PensionSavingsData
   );
 }
 
-function RetirementMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][number]; onSaved: () => Promise<void> }) {
+function RetirementMonthRow({ row, editing, onSaved }: { row: PensionSavingsData['rows'][number]; editing: boolean; onSaved: () => Promise<void> }) {
   const [contribution, setContribution] = useState(String(row.principal));
   const [accountBalance, setAccountBalance] = useState(String(row.balance));
   const [saving, setSaving] = useState(false);
@@ -1771,6 +1831,18 @@ function RetirementMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][
     setContribution(String(row.principal));
     setAccountBalance(String(row.balance));
   }, [row.balance, row.principal]);
+
+  const dirty = Number(contribution || 0) !== row.principal || Number(accountBalance || 0) !== row.balance;
+  if (!editing) {
+    return (
+      <tr className="border-t border-zinc-100 dark:border-zinc-800">
+        <td className="px-3 py-3 font-semibold">{row.period}</td>
+        <td className="px-3 py-3 text-right tabular-nums">{formatMoney(row.principal)}</td>
+        <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatMoney(row.balance)}</td>
+        <td className={`px-3 py-3 text-right font-semibold tabular-nums ${row.profit < 0 ? 'text-expense' : 'text-gain'}`}>{formatMoney(row.profit)}</td>
+      </tr>
+    );
+  }
 
   return (
     <tr className="border-t border-zinc-100 dark:border-zinc-800">
@@ -1781,14 +1853,14 @@ function RetirementMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][
       <td className="px-3 py-3 text-right">
         <div className="flex justify-end gap-2">
           <button className="rounded-lg border border-expense/30 px-3 py-2 text-xs font-semibold text-expense hover:bg-expense-soft" disabled={saving} onClick={async () => { if (!window.confirm(`${row.period} 퇴직연금 데이터를 삭제할까요?`)) return; setSaving(true); try { await api.deleteRetirementMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>삭제</button>
-          <button className="rounded-lg bg-zinc-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-950" disabled={saving} onClick={async () => { setSaving(true); try { await api.updateRetirementMonth({ period: row.period, principal: Number(contribution || 0), balance: Number(accountBalance || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>
+          {dirty && <button className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50" disabled={saving} onClick={async () => { setSaving(true); try { await api.updateRetirementMonth({ period: row.period, principal: Number(contribution || 0), balance: Number(accountBalance || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>}
         </div>
       </td>
     </tr>
   );
 }
 
-function PensionMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][number]; onSaved: () => Promise<void> }) {
+function PensionMonthRow({ row, editing, onSaved }: { row: PensionSavingsData['rows'][number]; editing: boolean; onSaved: () => Promise<void> }) {
   const [principal, setPrincipal] = useState(String(row.principal));
   const [profit, setProfit] = useState(String(row.profit));
   const [saving, setSaving] = useState(false);
@@ -1797,6 +1869,20 @@ function PensionMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][num
     setPrincipal(String(row.principal));
     setProfit(String(row.profit));
   }, [row.principal, row.profit]);
+
+  const dirty = Number(principal || 0) !== row.principal || Number(profit || 0) !== row.profit;
+  const basisBadge = <span className={`basis-badge ${row.isManual ? 'is-manual' : 'is-auto'}`}>{row.isManual ? '수동' : '자동'}</span>;
+  if (!editing) {
+    return (
+      <tr className="border-t border-zinc-100 dark:border-zinc-800">
+        <td className="px-3 py-3 font-semibold">{row.period}</td>
+        <td className="px-3 py-3 text-right tabular-nums">{formatMoney(row.principal)}</td>
+        <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatMoney(row.balance)}</td>
+        <td className={`px-3 py-3 text-right font-semibold tabular-nums ${row.profit < 0 ? 'text-expense' : row.profit > 0 ? 'text-gain' : ''}`}>{formatMoney(row.profit)}</td>
+        <td className="px-3 py-3">{basisBadge}</td>
+      </tr>
+    );
+  }
 
   return (
     <tr className="border-t border-zinc-100 dark:border-zinc-800">
@@ -1810,11 +1896,11 @@ function PensionMonthRow({ row, onSaved }: { row: PensionSavingsData['rows'][num
         <input className={`w-40 rounded-lg border border-zinc-300 bg-white p-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-950 ${Number(profit) < 0 ? 'text-expense' : ''}`} inputMode="numeric" aria-label={`${row.period} 월 수익`} value={formatAccountingInput(profit)} onChange={(event) => setProfit(event.target.value.replace(/[^\d.-]/g, ''))} />
         {row.isManual && <div className="mt-1 text-[11px] text-zinc-400">자동 {formatMoney(row.autoProfit)}</div>}
       </td>
-      <td className="px-3 py-3"><span className={`rounded px-2 py-1 text-xs font-semibold ${row.isManual ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>{row.isManual ? '수동' : '자동'}</span></td>
+      <td className="px-3 py-3">{basisBadge}</td>
       <td className="px-3 py-3 text-right">
         <div className="flex justify-end gap-2">
-          {row.isManual && <button className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700" disabled={saving} onClick={async () => { setSaving(true); try { await api.deletePensionMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>자동값 복원</button>}
-          <button className="rounded-lg bg-zinc-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-zinc-950" disabled={saving} onClick={async () => { setSaving(true); try { await api.updatePensionMonth({ period: row.period, principal: Number(principal || 0), profit: Number(profit || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>
+          {row.isManual && <button className="link-button text-xs" disabled={saving} onClick={async () => { setSaving(true); try { await api.deletePensionMonth(row.period); await onSaved(); } finally { setSaving(false); } }}>자동값 복원</button>}
+          {dirty && <button className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50" disabled={saving} onClick={async () => { setSaving(true); try { await api.updatePensionMonth({ period: row.period, principal: Number(principal || 0), profit: Number(profit || 0) }); await onSaved(); } finally { setSaving(false); } }}>저장</button>}
         </div>
       </td>
     </tr>
@@ -1963,6 +2049,7 @@ function AssetManager({
 }
 
 function SettingsForm({
+  section,
   settings,
   manualPoints,
   marketData,
@@ -1970,6 +2057,7 @@ function SettingsForm({
   onManualChanged,
   onMarketReload
 }: {
+  section: 'settings' | 'data';
   settings?: AppSettings | null;
   manualPoints: ManualNetWorthPoint[];
   marketData?: MarketBenchmarkData | null;
@@ -2010,6 +2098,7 @@ function SettingsForm({
 
   return (
     <div className="max-w-3xl space-y-6">
+      {section === 'settings' && (
       <div className="space-y-4">
         <label className="block text-sm font-medium">
           이름
@@ -2123,107 +2212,11 @@ function SettingsForm({
           {saving ? '저장 중' : '저장'}
         </button>
       </div>
+      )}
 
-      <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold">대한민국 가구 순자산 통계</h3>
-            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-              국가데이터처·한국은행·금융감독원의 공식 조사와 NH투자증권의 상위 가구 마이크로데이터 분석을 함께 사용합니다. 가구 단위이며 부동산 등 실물자산을 포함합니다.
-            </p>
-          </div>
-          <button
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            disabled={benchmarkRefreshing}
-            onClick={async () => {
-              setBenchmarkRefreshing(true);
-              try {
-                await api.refreshWealthBenchmark();
-                await onSaved();
-              } catch (error) {
-                window.alert(error instanceof Error ? error.message : '순자산 통계 갱신에 실패했습니다.');
-              } finally {
-                setBenchmarkRefreshing(false);
-              }
-            }}
-          >
-            {benchmarkRefreshing ? '불러오는 중...' : '최신 순자산 통계 불러오기'}
-          </button>
-        </div>
-        {settings?.wealthBenchmark ? (
-          <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            <p>전국 평균 {formatKoreanMoney(settings.wealthBenchmark.averageNetWorth)} · 중앙값 {formatKoreanMoney(settings.wealthBenchmark.medianNetWorth)}</p>
-            <p>{settings.wealthBenchmark.referenceDate} 기준 · {settings.wealthBenchmark.surveyYear}년 조사 · 발표 {settings.wealthBenchmark.publishedAt}</p>
-            {settings.wealthBenchmark.sourceCheckedAt && <p>공식 자료 확인 {dayjs(settings.wealthBenchmark.sourceCheckedAt).format('YYYY.MM.DD HH:mm:ss')}</p>}
-            <p>마지막 갱신 {dayjs(settings.wealthBenchmark.refreshedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
-            <div className="flex flex-col items-start gap-0.5">
-              <a className="font-medium text-gain underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
-              {settings.wealthBenchmark.upperTailSourceUrl && (
-                <a className="font-medium text-gain underline underline-offset-2" href={settings.wealthBenchmark.upperTailSourceUrl} target="_blank" rel="noreferrer">
-                  {settings.wealthBenchmark.upperTailSourceName}{settings.wealthBenchmark.upperTailPublishedAt ? ` · 발표 ${settings.wealthBenchmark.upperTailPublishedAt}` : ''}
-                  {settings.wealthBenchmark.upperTailReferenceDate ? ` · 기준 ${settings.wealthBenchmark.upperTailReferenceDate}` : ''}
-                </a>
-              )}
-            </div>
-            {settings.wealthBenchmark.percentiles.some((row) => row.percentile >= 95) && (
-              <p className="mt-1 font-medium text-zinc-600 dark:text-zinc-300">
-                상위 10% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 90)?.amount ?? 0)} · 상위 5% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 95)?.amount ?? 0)} · 상위 1% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 99)?.amount ?? 0)} · 상위 0.1% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 99.9)?.amount ?? 0)}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="mt-3 text-xs text-zinc-400">아직 통계를 받아오지 않았습니다. 위 버튼을 눌러 최초 갱신해 주세요.</p>
-        )}
-        <p className="mt-2 text-[11px] leading-4 text-zinc-400">표의 백분율은 공개된 분위 경계값 사이를 로그 보간한 추정치입니다. 97.1억원 이상은 상위 0.1% 미만으로만 표시하며 개인이 아닌 가구 순자산 비교입니다.</p>
-      </section>
-
-      <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold">시장 지수 데이터</h3>
-            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-              코스피, 나스닥100, S&amp;P500과 원/달러 환율의 완료된 월말 자료입니다.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
-              disabled={marketRefreshing}
-              onClick={async () => {
-                setMarketRefreshing(true);
-                try {
-                  await onMarketReload();
-                } catch (error) {
-                  window.alert(error instanceof Error ? error.message : '시장 지수 데이터를 다시 불러오지 못했습니다.');
-                } finally {
-                  setMarketRefreshing(false);
-                }
-              }}
-            >
-              {marketRefreshing ? '불러오는 중...' : '최신 데이터 다시 불러오기'}
-            </button>
-            <a
-              className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
-              href="https://github.com/hopeon0522/easy-moneybook-web/actions/workflows/pages.yml"
-              target="_blank"
-              rel="noreferrer"
-            >
-              새 월말 자료 갱신
-            </a>
-          </div>
-        </div>
-        {marketData ? (
-          <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            <p>최근 완료 기준월 {marketData.completedThrough}</p>
-            <p>마지막 데이터 생성 {dayjs(marketData.updatedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
-          </div>
-        ) : (
-          <p className="mt-3 text-xs text-zinc-400">시장 지수 데이터를 아직 불러오지 못했습니다.</p>
-        )}
-        <p className="mt-2 text-[11px] leading-4 text-zinc-400">새 월말 자료 갱신 화면에서 Run workflow를 실행하면 지수 파일 생성과 홈페이지 배포가 함께 진행됩니다.</p>
-      </section>
-
-      <section className="border-t border-zinc-100 pt-5 dark:border-zinc-800">
+      {section === 'data' && (
+      <>
+      <section className="data-section is-primary">
         <h3 className="text-sm font-semibold">전체 데이터 백업 및 복원</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
           거래, 자산, 연금저축, 수동 순자산과 모든 설정을 하나의 전용 백업 파일에 저장합니다.
@@ -2285,7 +2278,107 @@ function SettingsForm({
         <p className="mt-2 text-xs text-expense">복원하면 이 브라우저의 현재 데이터가 백업 파일의 내용으로 교체됩니다.</p>
       </section>
 
-      <details className="group border-t border-zinc-100 pt-5 dark:border-zinc-800">
+      <section className="data-section">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">대한민국 가구 순자산 통계</h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              국가데이터처·한국은행·금융감독원의 공식 조사와 NH투자증권의 상위 가구 마이크로데이터 분석을 함께 사용합니다. 가구 단위이며 부동산 등 실물자산을 포함합니다.
+            </p>
+          </div>
+          <button
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            disabled={benchmarkRefreshing}
+            onClick={async () => {
+              setBenchmarkRefreshing(true);
+              try {
+                await api.refreshWealthBenchmark();
+                await onSaved();
+              } catch (error) {
+                window.alert(error instanceof Error ? error.message : '순자산 통계 갱신에 실패했습니다.');
+              } finally {
+                setBenchmarkRefreshing(false);
+              }
+            }}
+          >
+            {benchmarkRefreshing ? '불러오는 중...' : '최신 순자산 통계 불러오기'}
+          </button>
+        </div>
+        {settings?.wealthBenchmark ? (
+          <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            <p>전국 평균 {formatKoreanMoney(settings.wealthBenchmark.averageNetWorth)} · 중앙값 {formatKoreanMoney(settings.wealthBenchmark.medianNetWorth)}</p>
+            <p>{settings.wealthBenchmark.referenceDate} 기준 · {settings.wealthBenchmark.surveyYear}년 조사 · 발표 {settings.wealthBenchmark.publishedAt}</p>
+            {settings.wealthBenchmark.sourceCheckedAt && <p>공식 자료 확인 {dayjs(settings.wealthBenchmark.sourceCheckedAt).format('YYYY.MM.DD HH:mm:ss')}</p>}
+            <p>마지막 갱신 {dayjs(settings.wealthBenchmark.refreshedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
+            <div className="flex flex-col items-start gap-0.5">
+              <a className="font-medium text-gain underline underline-offset-2" href={settings.wealthBenchmark.sourceUrl} target="_blank" rel="noreferrer">{settings.wealthBenchmark.sourceName}</a>
+              {settings.wealthBenchmark.upperTailSourceUrl && (
+                <a className="font-medium text-gain underline underline-offset-2" href={settings.wealthBenchmark.upperTailSourceUrl} target="_blank" rel="noreferrer">
+                  {settings.wealthBenchmark.upperTailSourceName}{settings.wealthBenchmark.upperTailPublishedAt ? ` · 발표 ${settings.wealthBenchmark.upperTailPublishedAt}` : ''}
+                  {settings.wealthBenchmark.upperTailReferenceDate ? ` · 기준 ${settings.wealthBenchmark.upperTailReferenceDate}` : ''}
+                </a>
+              )}
+            </div>
+            {settings.wealthBenchmark.percentiles.some((row) => row.percentile >= 95) && (
+              <p className="mt-1 font-medium text-zinc-600 dark:text-zinc-300">
+                상위 10% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 90)?.amount ?? 0)} · 상위 5% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 95)?.amount ?? 0)} · 상위 1% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 99)?.amount ?? 0)} · 상위 0.1% {formatCompactMoney(settings.wealthBenchmark.percentiles.find((row) => row.percentile === 99.9)?.amount ?? 0)}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-zinc-400">아직 통계를 받아오지 않았습니다. 위 버튼을 눌러 최초 갱신해 주세요.</p>
+        )}
+        <p className="mt-2 text-[11px] leading-4 text-zinc-400">표의 백분율은 공개된 분위 경계값 사이를 로그 보간한 추정치입니다. 97.1억원 이상은 상위 0.1% 미만으로만 표시하며 개인이 아닌 가구 순자산 비교입니다.</p>
+      </section>
+
+      <section className="data-section">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">시장 지수 데이터</h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              코스피, 나스닥100, S&amp;P500과 원/달러 환율의 완료된 월말 자료입니다.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+              disabled={marketRefreshing}
+              onClick={async () => {
+                setMarketRefreshing(true);
+                try {
+                  await onMarketReload();
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : '시장 지수 데이터를 다시 불러오지 못했습니다.');
+                } finally {
+                  setMarketRefreshing(false);
+                }
+              }}
+            >
+              {marketRefreshing ? '불러오는 중...' : '최신 데이터 다시 불러오기'}
+            </button>
+            <a
+              className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
+              href="https://github.com/hopeon0522/easy-moneybook-web/actions/workflows/pages.yml"
+              target="_blank"
+              rel="noreferrer"
+            >
+              새 월말 자료 갱신
+            </a>
+          </div>
+        </div>
+        {marketData ? (
+          <div className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            <p>최근 완료 기준월 {marketData.completedThrough}</p>
+            <p>마지막 데이터 생성 {dayjs(marketData.updatedAt).format('YYYY.MM.DD HH:mm:ss')}</p>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-zinc-400">시장 지수 데이터를 아직 불러오지 못했습니다.</p>
+        )}
+        <p className="mt-2 text-[11px] leading-4 text-zinc-400">새 월말 자료 갱신 화면에서 Run workflow를 실행하면 지수 파일 생성과 홈페이지 배포가 함께 진행됩니다.</p>
+      </section>
+
+
+      <details className="data-section group">
         <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold [&::-webkit-details-marker]:hidden">
           과거 순자산 수동 입력
           <span className="text-lg text-zinc-400 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
@@ -2376,6 +2469,8 @@ function SettingsForm({
         </div>
         </div>
       </details>
+      </>
+      )}
     </div>
   );
 }

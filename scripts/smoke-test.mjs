@@ -4,7 +4,7 @@
 import { chromium } from 'playwright';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:4173/';
-const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금저축', '백업', '자산추정', '설정'];
+const tabs = ['대시보드', '거래내역', '카테고리', '캘린더', '자산', '연금', '자산추정', '데이터', '설정'];
 
 function sampleData() {
   const now = '2026-01-01T00:00:00Z';

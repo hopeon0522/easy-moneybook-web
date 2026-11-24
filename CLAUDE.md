@@ -6,7 +6,7 @@
 
 ## 프로젝트 한 줄 요약
 편한가계부(Android) 백업 Excel(.xlsx)을 업로드해 브라우저에서 거래·자산·연금·순자산을 분석하는 개인 가계부 웹앱.
-배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.11.5**. 이전 상태 백업: 브랜치 `backup/v0.11.4`, `backup/v0.11.3`, `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
+배포: GitHub Pages (`https://github.com/hopeon0522/easy-moneybook-web`), 현재 버전 **v0.12.0**. 이전 상태 백업: 브랜치 `backup/v0.11.5`, `backup/v0.11.4`, `backup/v0.11.3`, `backup/v0.11.2`, `backup/v0.11.1`, `backup/v0.11.0`, `backup/v0.10.0`, 태그 `backup/v0.9.7-pre-claude`.
 
 ## 아키텍처 (중요)
 - **실제 운영 경로는 100% 프론트엔드**입니다. 개인 데이터는 브라우저 **IndexedDB**(`easy-moneybook-local` DB / `state` 스토어 / `primary` 키)에만 저장됩니다. (커밋 `7c32470 Store personal data locally in browser`)
@@ -17,7 +17,7 @@
 ## 폴더 구조
 | 경로 | 역할 |
 |---|---|
-| `src/App.tsx` | 거의 모든 화면(약 2,500줄). 탭: 대시보드·거래내역·카테고리·캘린더·자산·연금저축·백업·자산추정·설정 |
+| `src/App.tsx` | 거의 모든 화면(약 2,600줄). 탭: 대시보드·거래내역·카테고리·캘린더·자산·연금·자산추정·데이터·설정 |
 | `src/api/client.ts` | 데이터 계층(대시보드 집계, 연금, 벤치마크, 백업/복원, Excel 가져오기) |
 | `src/lib/localStore.ts` | IndexedDB 스키마(`LocalData`, version 1) 및 로드/저장 |
 | `src/lib/excelParser.ts` | 브라우저에서 편한가계부 xlsx 파싱 (exceljs) |
@@ -52,11 +52,17 @@
 ## 자산 분류
 `AssetKind`: savings(저축) · investment(투자) · realEstate(부동산, v0.11.3) · card(카드) · checkCard(체크카드) · loan(대출) · other(기타). 부채는 card·loan뿐이고 나머지는 모두 자산으로 합산됩니다. 새 분류를 추가할 때는 `types/domain.ts`, `lib/localStore.ts`의 타입, `App.tsx`의 `assetKindLabels`(순서 = 자산 탭 표시 순서)와 접힘 상태, `utils/insights.ts`의 자산 구성 그룹을 함께 고칩니다.
 
-## 디자인 시스템 (v0.11.0~)
-- 톤: 네이비·슬레이트. 색은 `src/styles.css` 상단의 `--c-*` 토큰(R G B)으로만 관리하고, Tailwind에서는 `accent / income / expense / gain / warn` (+ `-soft`) 클래스로 씁니다. `#ff5a52` 같은 hex 하드코딩 금지.
-- 의미: income=수입(파랑), expense=지출·손실(빨강), gain=수익·증가(초록), accent=브랜드/선택 상태(네이비).
-- Tailwind `zinc`는 `slate`로 매핑되어 있습니다(tailwind.config.js).
-- 글꼴: Pretendard(CDN, index.html). 숫자는 tabular-nums.
+## 디자인 시스템 (v0.12.0~, Claude 스타일)
+- 톤: 따뜻한 아이보리 바탕(#FAF9F5) · 테라코타 포인트(#C96442) · 밝은 사이드바 · 얇은 테두리, 그림자 최소. 사용자가 직접 고른 방향입니다(이전 v0.11 네이비에서 변경).
+- 색은 `src/styles.css` 상단의 `--c-*` 토큰(R G B)으로만 관리하고, Tailwind에서는 `accent / income / expense / gain / warn` (+ `-soft`) 클래스로 씁니다. 차트용 hex 팔레트는 `App.tsx`(pieColors 등), `AnnualCategoryPanel.tsx`, `insights.ts`에 같은 값으로 맞춰 둡니다.
+- 의미: income=수입(차분한 파랑), expense=지출·손실(벽돌색), gain=수익·증가(세이지 그린), accent=브랜드/선택 상태(테라코타).
+- Tailwind `zinc`는 따뜻한 회색 `stone`으로 매핑되어 있습니다(tailwind.config.js).
+- 글꼴: 본문 Pretendard, 제목·큰 숫자 `--font-serif`(Noto Serif KR). 둘 다 index.html에서 비동기 로딩. 숫자는 tabular-nums.
+- 강조(테라코타 채움) 버튼은 화면당 주요 동작 하나만. 나머지는 테두리 버튼.
+- Claude 로고나 이름은 사용하지 않습니다(분위기만 참고).
+
+## 메뉴 구조 (v0.12.0~)
+개요(대시보드) · 분석(거래내역·카테고리·캘린더) · 자산(자산·연금·자산추정) · 관리(데이터·설정). `App.tsx`의 `tabs`, `navGroups`, `mobilePrimaryTabs`. 탭 이름을 바꾸면 `scripts/smoke-test.mjs`의 목록도 함께 고칩니다. 데이터 탭 = 업로드 파일 + 백업/복원 + 통계/시장지수 갱신 + 과거 순자산, 설정 탭 = 화면 설정(`SettingsForm section="settings"`).
 - 대시보드 상단은 `src/components/WealthOverview.tsx`, 파생 지표는 `src/utils/insights.ts`(기존 계산 결과를 읽기만 하는 표시용 계산).
 - 계산/데이터 파일(`src/api/client.ts` 로직, `src/lib/*`, 기존 `src/utils/*`, `server/*`)은 디자인 작업에서 수정하지 않습니다. 커밋 전에 `git diff --stat`으로 확인하세요.
 
@@ -64,7 +70,7 @@
 설정은 `settings` 테이블의 key/value 행으로 저장됩니다(백업에 포함). 새 설정을 추가할 때는 `AppSettings` 타입, `client.ts`의 `settingsDefaults`·`settings()`·`updateSettings()`, `App.tsx`의 `SettingsForm`을 함께 고칩니다. 예: `usIndexDollarBasis`, `hideAllocationAmounts`(대시보드 자산 구성 금액 숨기기, v0.11.5).
 
 ## 아이콘
-`public/icons/`(favicon.svg·16·32·48 png, apple-touch-icon 180 꽉 찬 정사각형, mask-icon.svg)와 `public/favicon.ico`. 앱 큰 아이콘 원본은 `assets/app-icon/easy-moneybook-icon.svg`. 사파리는 아이콘을 오래 저장하므로 디자인을 바꿀 때는 파일 이름을 바꿉니다.
+`public/icons/warm/`(v0.12 테라코타: favicon.svg·16·32·48 png, apple-touch-icon 180 꽉 찬 정사각형, mask-icon.svg; 이전 네이비는 `public/icons/`)와 `public/favicon.ico`. 앱 큰 아이콘 원본은 `assets/app-icon/easy-moneybook-icon.svg`. 사파리는 아이콘을 오래 저장하므로 디자인을 바꿀 때는 파일 이름을 바꿉니다.
 
 ## 성능 메모 (v0.11.4)
 - `client.ts`의 `localData()`는 읽는 중인 작업을 공유해 저장소를 한 번만 읽습니다. `persist()`가 캐시를 갱신합니다.

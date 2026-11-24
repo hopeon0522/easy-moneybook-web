@@ -55,7 +55,7 @@ jobs:
           SMOKE_CHANNEL=chrome node smoke-test.mjs http://127.0.0.1:4173/
           cd "$GITHUB_WORKSPACE"
           test -f dist/version.json && cat dist/version.json
-          test -f dist/icons/favicon.svg && test -f dist/icons/apple-touch-icon.png
+          test -f dist/icons/warm/favicon.svg && test -f dist/icons/warm/apple-touch-icon.png
           if grep -q vendor-excel dist/index.html; then echo 'exceljs is loaded at startup'; exit 1; fi
 
       - name: Upload artifact

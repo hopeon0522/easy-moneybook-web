@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 기존 화면의 zinc(회색) 클래스를 네이비 계열 slate 톤으로 통일
-        zinc: colors.slate,
+        // 기존 화면의 zinc(회색) 클래스를 따뜻한 회색(stone) 톤으로 통일
+        zinc: colors.stone,
         surface: token('surface'),
         ink: token('ink'),
         accent: { DEFAULT: token('accent'), soft: token('accent-soft') },
@@ -21,6 +21,7 @@ export default {
         warn: token('warn')
       },
       fontFamily: {
+        serif: ['"Noto Serif KR"', '"Nanum Myeongjo"', 'AppleMyungjo', 'Georgia', 'serif'],
         sans: ['"Pretendard Variable"', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', '"Apple SD Gothic Neo"', '"Noto Sans KR"', '"Segoe UI"', 'sans-serif']
       }
     }

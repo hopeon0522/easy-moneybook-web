@@ -12,12 +12,12 @@ export type AllocationGroup = {
 };
 
 const groupMeta: Record<AllocationGroup['key'], { label: string; color: string; liability: boolean }> = {
-  savings: { label: '현금·예금', color: '#24489b', liability: false },
-  investment: { label: '투자', color: '#3f86e0', liability: false },
-  realEstate: { label: '부동산', color: '#22a3b8', liability: false },
-  other: { label: '기타 자산', color: '#8fa3c0', liability: false },
-  card: { label: '카드 대금', color: '#d08a2e', liability: true },
-  loan: { label: '대출', color: '#c94a4a', liability: true }
+  savings: { label: '현금·예금', color: '#3D6FA8', liability: false },
+  investment: { label: '투자', color: '#C96442', liability: false },
+  realEstate: { label: '부동산', color: '#6A9A5B', liability: false },
+  other: { label: '기타 자산', color: '#A9A49A', liability: false },
+  card: { label: '카드 대금', color: '#C79A3A', liability: true },
+  loan: { label: '대출', color: '#B34138', liability: true }
 };
 
 const kindToGroup: Record<AssetKind, AllocationGroup['key'] | null> = {

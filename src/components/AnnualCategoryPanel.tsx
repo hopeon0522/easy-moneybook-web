@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import type { AnnualCategoryData } from '../types/domain';
 import { formatMoney } from '../utils/format';
 
-const colors = ['#24489b', '#3f86e0', '#22a3b8', '#7a5cc7', '#d08a2e', '#d4578a', '#5b9a4a', '#8fa3c0', '#b06ad9'];
+const colors = ['#C96442', '#3D6FA8', '#6A9A5B', '#C79A3A', '#8B6BB0', '#D08770', '#4E9A9A', '#A9A49A', '#B5577A'];
 
 function Amount({ value }: { value: number | null }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -45,8 +45,8 @@ export function AnnualCategoryPanel({ data, type, loading, onSelect, onTypeChang
       <div className="mb-5 flex flex-wrap gap-x-7 gap-y-3 text-sm"><span className="text-zinc-500">연 수입 <strong className="ml-2 text-income">{formatMoney(data?.income ?? 0)}</strong></span><span className="text-zinc-500">연 지출 <strong className="ml-2 text-expense">{formatMoney(data?.expense ?? 0)}</strong></span><span className="text-zinc-500">연 순수익 <strong className="ml-2 text-gain">{formatMoney((data?.income ?? 0) - (data?.expense ?? 0))}</strong></span></div>
       {rows.length ? <div className="annual-category-chart"><ResponsiveContainer><BarChart data={rows} margin={{ top: 24, right: 12, bottom: 12, left: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 6" />
-        <XAxis type="category" dataKey="name" interval={0} angle={rows.length > 6 ? -35 : 0} textAnchor={rows.length > 6 ? 'end' : 'middle'} height={rows.length > 6 ? 65 : 35} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#92949d' }} tickFormatter={value => String(value).length > 7 ? `${String(value).slice(0, 6)}…` : String(value)} />
-        <YAxis type="number" width={42} tickFormatter={value => `${Number(value).toFixed(0)}%`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#92949d' }} />
+        <XAxis type="category" dataKey="name" interval={0} angle={rows.length > 6 ? -35 : 0} textAnchor={rows.length > 6 ? 'end' : 'middle'} height={rows.length > 6 ? 65 : 35} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8A887F' }} tickFormatter={value => String(value).length > 7 ? `${String(value).slice(0, 6)}…` : String(value)} />
+        <YAxis type="number" width={42} tickFormatter={value => `${Number(value).toFixed(0)}%`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8A887F' }} />
         <Tooltip cursor={{ fill: 'rgb(128 128 128 / .07)' }} content={({ active, payload }) => { const row = payload?.[0]?.payload as AnnualCategoryData['rows'][number] | undefined; return active && row ? <div className="category-year-tooltip"><strong>{row.name}</strong><p>{formatMoney(row.total)}</p><span>{row.percent.toFixed(1)}%</span></div> : null; }} />
         <Bar dataKey="percent" isAnimationActive={false} maxBarSize={42} radius={[4, 4, 0, 0]} label={<BarPercent />} onClick={entry => onSelect(String(entry.name))} className="cursor-pointer">{rows.map((row, index) => <Cell key={row.name} fill={colors[index % colors.length]} />)}</Bar>
       </BarChart></ResponsiveContainer></div> : <p className="py-10 text-center text-sm text-zinc-400">{loading ? '불러오는 중...' : '해당 연도의 거래가 없습니다.'}</p>}
