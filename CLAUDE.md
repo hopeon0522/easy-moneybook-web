@@ -60,11 +60,11 @@
 - 글꼴: 본문 Pretendard, 제목·큰 숫자 `--font-serif`(Noto Serif KR). 둘 다 index.html에서 비동기 로딩. 숫자는 tabular-nums.
 - 강조(테라코타 채움) 버튼은 화면당 주요 동작 하나만. 나머지는 테두리 버튼.
 - Claude 로고나 이름은 사용하지 않습니다(분위기만 참고).
+- 대시보드 상단은 `src/components/WealthOverview.tsx`, 파생 지표는 `src/utils/insights.ts`(기존 계산 결과를 읽기만 하는 표시용 계산).
+- 계산/데이터 파일(`src/api/client.ts` 로직, `src/lib/*`, 기존 `src/utils/*`, `server/*`)은 디자인 작업에서 수정하지 않습니다. 커밋 전에 `git diff --stat`으로 확인하세요.
 
 ## 메뉴 구조 (v0.12.0~)
 개요(대시보드) · 분석(거래내역·카테고리·캘린더) · 자산(자산·연금·자산추정) · 관리(데이터·설정). `App.tsx`의 `tabs`, `navGroups`, `mobilePrimaryTabs`. 탭 이름을 바꾸면 `scripts/smoke-test.mjs`의 목록도 함께 고칩니다. 데이터 탭 = 업로드 파일 + 백업/복원 + 통계/시장지수 갱신 + 과거 순자산, 설정 탭 = 화면 설정(`SettingsForm section="settings"`).
-- 대시보드 상단은 `src/components/WealthOverview.tsx`, 파생 지표는 `src/utils/insights.ts`(기존 계산 결과를 읽기만 하는 표시용 계산).
-- 계산/데이터 파일(`src/api/client.ts` 로직, `src/lib/*`, 기존 `src/utils/*`, `server/*`)은 디자인 작업에서 수정하지 않습니다. 커밋 전에 `git diff --stat`으로 확인하세요.
 
 ## 설정 항목
 설정은 `settings` 테이블의 key/value 행으로 저장됩니다(백업에 포함). 새 설정을 추가할 때는 `AppSettings` 타입, `client.ts`의 `settingsDefaults`·`settings()`·`updateSettings()`, `App.tsx`의 `SettingsForm`을 함께 고칩니다. 예: `usIndexDollarBasis`, `hideAllocationAmounts`(대시보드 자산 구성 금액 숨기기, v0.11.5).
@@ -87,7 +87,7 @@
 1. push 전에 현재 GitHub `main`을 `backup/<직전 버전>` 브랜치로 push (`scripts/backup-release.sh <직전 버전>` 또는 `git push origin origin/main:refs/heads/backup/<버전>`). 클라우드 세션에서는 태그 push가 막혀 있어 브랜치를 씁니다.
 2. 가능하면 사용자 맥 `~/Desktop/Claude/backups/<버전>/`에 `repository.bundle`과 `SHA256SUMS`를 남깁니다.
 3. `ROLLBACK.md`에 해당 버전의 되돌리기 방법을 추가합니다.
-4. 사용자 가계부 데이터는 브라우저 IndexedDB에만 있으므로, 큰 변경 전에는 설정 → 전체 데이터 백업을 안내합니다.
+4. 사용자 가계부 데이터는 브라우저 IndexedDB에만 있으므로, 큰 변경 전에는 데이터 탭 → 전체 데이터 백업을 안내합니다.
 
 ## 실행/빌드
 ```bash
